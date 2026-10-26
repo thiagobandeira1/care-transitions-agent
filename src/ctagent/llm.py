@@ -57,17 +57,21 @@ class OllamaLLM:
         cpu_only: bool = False,
         num_ctx: int = 8192,
         temperature: float = 0.0,
+        num_predict: int = 1500,
     ) -> None:
         assert_no_cloud_tracing()
         assert_local_model(model, base_url)
         from langchain_ollama import ChatOllama
 
         self.name = f"{model}{' (cpu)' if cpu_only else ''}"
+        # num_predict caps runaway generations (a model stuck repeating JSON would otherwise run
+        # until the context fills); a capped output fails validation, retries once, then flags.
         self._chat = ChatOllama(
             model=model,
             base_url=base_url,
             temperature=temperature,
             num_ctx=num_ctx,
+            num_predict=num_predict,
             reasoning=False,
             num_gpu=0 if cpu_only else None,
             keep_alive="10m",
