@@ -64,6 +64,7 @@ class OllamaLLM:
         from langchain_ollama import ChatOllama
 
         self.name = f"{model}{' (cpu)' if cpu_only else ''}"
+        self._model, self._base_url = model, base_url
         # num_predict caps runaway generations (a model stuck repeating JSON would otherwise run
         # until the context fills); a capped output fails validation, retries once, then flags.
         self._chat = ChatOllama(
@@ -76,6 +77,16 @@ class OllamaLLM:
             num_gpu=0 if cpu_only else None,
             keep_alive="10m",
         )
+
+    def unload(self) -> None:
+        """Drop the model from Ollama's memory now.
+
+        Ollama reuses a loaded runner for later requests that don't set num_gpu, so a model
+        left loaded by a CPU-only run would make the next GPU job run on CPU.
+        """
+        import ollama
+
+        ollama.Client(host=self._base_url).generate(model=self._model, keep_alive=0)
 
     def complete(self, system: str, prompt: str) -> str:
         """Free text (used only to write synthetic notes)."""
@@ -102,6 +113,10 @@ class FakeLLM:
     responses: dict[str, Callable[[str], BaseModel | Exception]] = field(default_factory=dict)
     name: str = "fake"
     calls: list[tuple[str, str]] = field(default_factory=list)
+    unloaded: bool = False
+
+    def unload(self) -> None:
+        self.unloaded = True
 
     def generate(self, schema: type[T], system: str, prompt: str) -> T:
         self.calls.append((schema.__name__, prompt))

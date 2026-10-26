@@ -49,6 +49,27 @@ def test_ollama_llm_is_local_and_thinking_off() -> None:
 
 
 @pytest.mark.usefixtures("stub")
+def test_unload_asks_ollama_to_drop_the_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    import ollama
+
+    seen: list[tuple[str, dict[str, Any]]] = []
+
+    class StubClient:
+        def __init__(self, host: str) -> None:
+            seen.append(("host", {"host": host}))
+
+        def generate(self, **kwargs: Any) -> None:
+            seen.append(("generate", kwargs))
+
+    monkeypatch.setattr(ollama, "Client", StubClient)
+    OllamaLLM("qwen3:14b", cpu_only=True).unload()
+    assert seen == [
+        ("host", {"host": "http://localhost:11434"}),
+        ("generate", {"model": "qwen3:14b", "keep_alive": 0}),
+    ]
+
+
+@pytest.mark.usefixtures("stub")
 def test_ollama_llm_wraps_parse_failures() -> None:
     m = OllamaLLM("qwen3:8b")
     try:
@@ -79,11 +100,13 @@ def test_bench_writes_aggregates_and_synthetic_samples(
         watch_for=[],
         risk_summary="",
     )
-    monkeypatch.setattr(bench, "OllamaLLM", lambda model, cpu_only: FakeLLM(responses, name=model))
+    fake = FakeLLM(responses, name="qwen3:8b")
+    monkeypatch.setattr(bench, "OllamaLLM", lambda model, cpu_only: fake)
     monkeypatch.setattr(bench, "REPO", tmp_path)
     monkeypatch.setattr(llm_mod, "OllamaLLM", None)
     result = bench.run_bench(fx.write(tmp_path / "csv"), "qwen3:8b", n=2, cpu_only=True, samples=1)
     assert result["n"] == 2 and result["device"] == "cpu"
+    assert fake.unloaded  # a CPU-only runner must not linger for the next GPU job to reuse
     assert result["discharges_with_schema_failure"] == 0
     saved = json.loads((tmp_path / "evals" / "results" / "drafting_qwen3-8b_cpu.json").read_text())
     assert saved["seconds_per_discharge"]["mean"] >= 0

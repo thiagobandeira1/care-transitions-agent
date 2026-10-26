@@ -47,16 +47,13 @@ def sample_discharges(
     return [to_event(r) for _, r in el.iterrows()], patient_contexts(src, el)
 
 
-def run_bench(
-    csv_dir: Path, model: str, n: int, cpu_only: bool, seed: int = 7, samples: int = 0
-) -> dict[str, Any]:
-    events, ctx = sample_discharges(csv_dir, n, seed)
-    llm = OllamaLLM(model, cpu_only=cpu_only)
-    tracker = Tracker(":memory:")
-    graph = build_graph(
-        Deps(llm=llm, contexts=lambda e: ctx[e.episode_id], tracker=tracker), InMemorySaver()
-    )
-    rows, kept, details = [], [], []
+def _drive(
+    graph: Any, events: list[DischargeEvent], ctx: dict[str, PatientContext], samples: int
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Run each discharge to the review pause; return timing rows, kept samples, details."""
+    rows: list[dict[str, Any]] = []
+    kept: list[dict[str, Any]] = []
+    details: list[dict[str, Any]] = []
     for i, ev in enumerate(events):
         t0 = time.perf_counter()
         pause = start_discharge(graph, ev).interrupts[0].value
@@ -97,7 +94,24 @@ def run_bench(
                     },
                 }
             )
-        print(f"  {i + 1}/{n}: {wall:.1f}s, flags={len(flags)}", flush=True)
+        print(f"  {i + 1}/{len(events)}: {wall:.1f}s, flags={len(flags)}", flush=True)
+    return rows, kept, details
+
+
+def run_bench(
+    csv_dir: Path, model: str, n: int, cpu_only: bool, seed: int = 7, samples: int = 0
+) -> dict[str, Any]:
+    events, ctx = sample_discharges(csv_dir, n, seed)
+    llm = OllamaLLM(model, cpu_only=cpu_only)
+    tracker = Tracker(":memory:")
+    graph = build_graph(
+        Deps(llm=llm, contexts=lambda e: ctx[e.episode_id], tracker=tracker), InMemorySaver()
+    )
+    try:
+        rows, kept, details = _drive(graph, events, ctx, samples)
+    finally:
+        if cpu_only:
+            llm.unload()
     secs = [r["seconds"] for r in rows]
     result = {
         "model": llm.name,
