@@ -7,7 +7,10 @@ requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Thiago Bandeira", email = "thiagobatistanb@gmail.com" }]
 dependencies = [
+    "duckdb>=2.0.0",
+    "pandas>=3.1.0",
     "pydantic>=2.8",
+    "pytz>=2026.5",
 ]
 
 [dependency-groups]
@@ -16,6 +19,7 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.6",
     "mypy>=1.11",
+    "pandas-stubs>=3.0.5.260914",
 ]
 
 [build-system]
@@ -36,6 +40,8 @@ ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S"]
+# SQL is built from file paths and module constants only (see module docstring)
+"src/ctagent/synthea.py" = ["S608"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -51,4 +57,5 @@ addopts = "-q --cov=ctagent --cov-report=term-missing --cov-fail-under=85"
 markers = [
     "ollama: needs a running local Ollama server (skipped in CI)",
     "mimic: needs local MIMIC data via .env paths (skipped in CI, never on shared runners)",
+    "synthea: needs the local Synthea output (skipped when absent)",
 ]

@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Install dependencies
+        run: uv sync --group dev
+      - name: Lint (ruff)
+        run: uv run ruff check .
+      - name: Format check (ruff)
+        run: uv run ruff format --check .
+      - name: Type-check (mypy)
+        run: uv run mypy
+      - name: Tests (no models, no MIMIC, no Synthea output; those tests skip)
+        run: uv run pytest
+      - name: Guard - no data, weights or secrets tracked; no MIMIC in fixtures
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          set -e
+          if git ls-files | grep -E '\.(csv|tsv|parquet|db|duckdb|sqlite3?|jsonl|gguf|safetensors|bin|pt)(\.gz)?$|^\.env$'; then
+            echo "::error::Data files, weights or .env are committed"; exit 1
+          fi
+          if git grep -niE '\bmimic(-iv|-iii)?\b' -- synthetic tests/fixtures.py; then
+            echo "::error::MIMIC references in synthetic fixtures"; exit 1
+          fi
+          echo "OK"

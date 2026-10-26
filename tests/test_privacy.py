@@ -2,7 +2,32 @@ from pathlib import Path
 
 import pytest
 
-from ctagent.privacy import PrivacyError, assert_no_cloud_tracing, assert_outside_repo
+from ctagent.privacy import (
+    PrivacyError,
+    assert_local_model,
+    assert_no_cloud_tracing,
+    assert_outside_repo,
+)
+
+
+@pytest.mark.parametrize("model", ["qwen3:14b", "qwen3:8b", "my-extractor:latest"])
+def test_local_models_allowed(model: str) -> None:
+    assert_local_model(model, "http://localhost:11434")
+    assert_local_model(model, "http://127.0.0.1:11434")
+
+
+@pytest.mark.parametrize(
+    ("model", "url"),
+    [
+        ("gpt-oss:120b-cloud", "http://localhost:11434"),
+        ("qwen3-coder:cloud", "http://localhost:11434"),
+        ("qwen3:14b", "https://ollama.com"),
+        ("qwen3:14b", "http://10.0.0.5:11434"),
+    ],
+)
+def test_cloud_models_and_remote_endpoints_refused(model: str, url: str) -> None:
+    with pytest.raises(PrivacyError):
+        assert_local_model(model, url)
 
 
 @pytest.mark.parametrize("value", ["true", "1", "TRUE", "yes"])

@@ -1,0 +1,37 @@
+# Download the MIMIC-IV-Note v2.2 discharge files from PhysioNet, resuming after network drops.
+# Run in your own PowerShell window (you type your PhysioNet password once; it stays in memory only):
+#   powershell -ExecutionPolicy Bypass -File scripts\download_mimic_note.ps1
+# Requires a signed MIMIC-IV-Note data use agreement. Files land OUTSIDE this repository.
+param(
+    [string]$User = "thiagobandeira",
+    [string]$Dest = "C:\Users\Thiago\Documents\Coursework\Capstone Project\Dataset\mimic-iv-note-2.2\note"
+)
+
+$base = "https://physionet.org/files/mimic-iv-note/2.2/note"
+$files = @("discharge_detail.csv.gz", "discharge.csv.gz")
+New-Item -ItemType Directory -Force -Path $Dest | Out-Null
+
+$secure = Read-Host "PhysioNet password for $User" -AsSecureString
+$bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+$plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+# curl reads the credentials from stdin (--config -), so they never appear on the command line or on disk
+$escaped = $plain.Replace('\', '\\').Replace('"', '\"')
+$plain = $null
+
+foreach ($f in $files) {
+    $out = Join-Path $Dest $f
+    for ($i = 1; $i -le 1000; $i++) {
+        "user = `"$User`:$escaped`"" | curl.exe --config - --fail --location --continue-at - `
+            --retry 5 --retry-delay 15 --speed-time 120 --speed-limit 200 --output $out "$base/$f"
+        if ($LASTEXITCODE -eq 0) { Write-Host "done: $f"; break }
+        if ($LASTEXITCODE -eq 22 -and (Test-Path $out) -and $i -gt 1) {
+            Write-Host "server refused the resume range; $f is probably complete"; break
+        }
+        Write-Host "attempt $i stopped (curl exit $LASTEXITCODE); resuming in 30 s..."
+        Start-Sleep -Seconds 30
+    }
+}
+$escaped = $null
+Write-Host "Finished. Files are in $Dest (sizes below). Tell Claude to verify the checksums."
+Get-ChildItem $Dest | Select-Object Name, Length
