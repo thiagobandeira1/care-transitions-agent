@@ -1,0 +1,67 @@
+# ---- MIMIC / clinical data hard block: nothing derived from MIMIC or real patients is ever committed ----
+data/
+notes/
+mimic/
+outputs/
+runs/
+labels/
+gold/
+*.csv
+*.csv.gz
+*.tsv
+*.parquet
+*.feather
+*.db
+*.duckdb
+*.sqlite
+*.sqlite3
+*.json.gz
+*.jsonl
+*.jsonl.gz
+
+# ---- Model weights, adapters, training artifacts (MIMIC-trained weights are never redistributed) ----
+models/
+adapters/
+checkpoints/
+merged/
+gguf/
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+unsloth_compiled_cache/
+wandb/
+mlruns/
+
+# ---- Secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# ---- OS / IDE ----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ---- Allowed: SYNTHETIC fixtures only (Synthea-derived or generated; never real or MIMIC text) ----
+!synthetic/samples/
+!synthetic/samples/**

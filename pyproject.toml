@@ -1,0 +1,54 @@
+[project]
+name = "care-transitions-agent"
+version = "0.0.1"
+description = "Local, privacy-preserving post-discharge care transitions: a fine-tuned discharge-summary extractor and a human-in-the-loop LangGraph agent (public demo on Synthea)."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Thiago Bandeira", email = "thiagobatistanb@gmail.com" }]
+dependencies = [
+    "pydantic>=2.8",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ctagent"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "S", "C4", "SIM", "RUF"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+packages = ["ctagent"]
+warn_unreachable = true
+show_error_codes = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=ctagent --cov-report=term-missing --cov-fail-under=85"
+markers = [
+    "ollama: needs a running local Ollama server (skipped in CI)",
+    "mimic: needs local MIMIC data via .env paths (skipped in CI, never on shared runners)",
+]
