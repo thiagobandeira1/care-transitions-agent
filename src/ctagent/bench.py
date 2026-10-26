@@ -56,12 +56,21 @@ def run_bench(
     graph = build_graph(
         Deps(llm=llm, contexts=lambda e: ctx[e.episode_id], tracker=tracker), InMemorySaver()
     )
-    rows, kept = [], []
+    rows, kept, details = [], [], []
     for i, ev in enumerate(events):
         t0 = time.perf_counter()
         pause = start_discharge(graph, ev).interrupts[0].value
         wall = time.perf_counter() - t0
         flags = pause["flags"]
+        details.append(
+            {
+                "episode": i,
+                "flags": flags,
+                "record_meds": sorted({m.name for m in ctx[ev.episode_id].med_changes}),
+                "call_script": pause["call_script"],
+                "brief": pause["brief"],
+            }
+        )
         rows.append(
             {
                 "seconds": wall,
@@ -111,6 +120,11 @@ def run_bench(
     out.mkdir(parents=True, exist_ok=True)
     tag = f"{model.replace(':', '-')}_{result['device']}"
     (out / f"drafting_{tag}.json").write_text(json.dumps(result, indent=2))
+    # every draft with its record's medications, for reviewing each flag (synthetic; gitignored)
+    (REPO / "outputs").mkdir(exist_ok=True)
+    (REPO / "outputs" / f"bench_details_{tag}.json").write_text(
+        json.dumps(details, indent=1, default=str)
+    )
     if kept:
         sample_dir = REPO / "synthetic" / "samples"
         sample_dir.mkdir(parents=True, exist_ok=True)

@@ -212,7 +212,8 @@ def base_name(description: str) -> str:
     """Drug name without strength or form ('24 HR Metformin ... 500 MG' -> 'metformin ...')."""
     s = _LEADING_QTY.sub("", description.strip())
     m = _BASE_NAME.match(s)
-    return (m.group(1) if m else s).strip().lower()
+    # Synthea descriptions contain double spaces ("insulin isophane  human"); collapse them
+    return re.sub(r"\s+", " ", (m.group(1) if m else s)).strip().lower()
 
 
 def patient_contexts(src: SyntheaSource, eps: pd.DataFrame) -> dict[str, PatientContext]:

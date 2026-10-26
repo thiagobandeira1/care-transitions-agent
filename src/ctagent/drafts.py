@@ -92,6 +92,11 @@ _STOP = {
 }
 
 
+def _norm(name: str) -> str:
+    """Lowercase, punctuation to spaces, single spaces ('Insulin  Isophane, Human' matches)."""
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", name.lower())).strip()
+
+
 def _tokens(text: str) -> set[str]:
     return {t for t in re.findall(r"[a-z]{4,}", text.lower()) if t not in _STOP}
 
@@ -100,7 +105,9 @@ def grounding_violations(
     ctx: PatientContext, reason: str, script: CallScript | None, brief: ProviderBrief | None
 ) -> list[str]:
     """Medications or conditions named in drafts that are not in the record."""
-    meds = {base_name(m.description) for m in ctx.active_meds} | {m.name for m in ctx.med_changes}
+    meds = {_norm(base_name(m.description)) for m in ctx.active_meds} | {
+        _norm(m.name) for m in ctx.med_changes
+    }
     known_conditions = set().union(
         *(_tokens(c.description) for c in ctx.conditions), _tokens(reason)
     )
@@ -109,7 +116,7 @@ def grounding_violations(
     )
     out = []
     for line in lines:
-        name = line.name.strip().lower()
+        name = _norm(line.name)
         if not any(name in m or m in name for m in meds if m):
             out.append(f"medication not in record: {line.name}")
     for cond in brief.key_conditions if brief else []:
