@@ -7,6 +7,7 @@ python -m ctagent make-benchmark --n 150           # synthetic notes with known 
 python -m ctagent extract-bench --mode zero|few|rules [--model qwen3:8b]
 python -m ctagent mimic-prep                       # local only; prints aggregates
 python -m ctagent gold-export --n 200 --overlap 50 / gold-check   # local annotation
+python -m ctagent demo --n 10 [--workspace data/demo]   # morning batch for the review screen
 """
 
 import argparse
@@ -99,6 +100,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--db", type=Path, default=Path("data/tracking.sqlite"))
     p.add_argument("--mode", choices=["zero", "few", "rules"], default="zero")
     p.add_argument("--overlap", type=int, default=50)
+    p.add_argument("--workspace", type=Path, default=Path("data/demo"))
     p.add_argument("--date", type=date.fromisoformat, default=date.today())
     args = p.parse_args(argv)
     load_dotenv()
@@ -121,6 +123,17 @@ def main(argv: list[str] | None = None) -> None:
         from .mimic import MimicPaths, prepare
 
         print(json.dumps(prepare(MimicPaths.from_env()), indent=2, default=str))
+    elif args.command == "demo":
+        from .bench import sample_discharges
+        from .llm import OllamaLLM
+        from .review import Workspace, open_graph, pending, process
+
+        events, ctx = sample_discharges(args.synthea, args.n, seed=29)
+        graph, tracker = open_graph(
+            Workspace(args.workspace), OllamaLLM(args.model), lambda e: ctx[e.episode_id]
+        )
+        done = process(graph, events)
+        print(f"processed {done} discharges; pending review: {len(pending(tracker))}")
     elif args.command in ("gold-export", "gold-check"):
         from .gold import check, export
         from .mimic import MimicPaths

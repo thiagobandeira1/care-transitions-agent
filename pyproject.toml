@@ -17,6 +17,7 @@ dependencies = [
     "pydantic>=2.8",
     "python-dotenv>=1.2.4",
     "pytz>=2026.5",
+    "streamlit>=1.50",
 ]
 
 [dependency-groups]
@@ -27,6 +28,24 @@ dev = [
     "mypy>=1.11",
     "pandas-stubs>=3.0.5.260914",
 ]
+train = [
+    "accelerate>=1.8",
+    "bitsandbytes>=0.46",
+    "datasets>=3",
+    "peft>=0.17",
+    "torch>=2.7",
+    "transformers>=4.56",
+    "trl>=0.20",
+]
+
+# Training only (local GPU): `uv sync --group dev --group train`. CI never installs this group.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
 
 [build-system]
 requires = ["hatchling"]
