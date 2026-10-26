@@ -6,6 +6,7 @@ python -m ctagent daily --date 2024-03-22          # check-ins due today (tracki
 python -m ctagent make-benchmark --n 150           # synthetic notes with known answers
 python -m ctagent extract-bench --mode zero|few|rules [--model qwen3:8b]
 python -m ctagent mimic-prep                       # local only; prints aggregates
+python -m ctagent gold-export --n 200 --overlap 50 / gold-check   # local annotation
 """
 
 import argparse
@@ -77,7 +78,16 @@ def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="ctagent")
     p.add_argument(
         "command",
-        choices=["cohort", "bench", "daily", "make-benchmark", "extract-bench", "mimic-prep"],
+        choices=[
+            "cohort",
+            "bench",
+            "daily",
+            "make-benchmark",
+            "extract-bench",
+            "mimic-prep",
+            "gold-export",
+            "gold-check",
+        ],
     )
     p.add_argument(
         "--synthea", type=Path, default=Path(os.environ.get("SYNTHEA_CSV_DIR", DEFAULT_SYNTHEA))
@@ -88,6 +98,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--samples", type=int, default=0, help="save this many drafts as samples")
     p.add_argument("--db", type=Path, default=Path("data/tracking.sqlite"))
     p.add_argument("--mode", choices=["zero", "few", "rules"], default="zero")
+    p.add_argument("--overlap", type=int, default=50)
     p.add_argument("--date", type=date.fromisoformat, default=date.today())
     args = p.parse_args(argv)
     load_dotenv()
@@ -110,6 +121,13 @@ def main(argv: list[str] | None = None) -> None:
         from .mimic import MimicPaths, prepare
 
         print(json.dumps(prepare(MimicPaths.from_env()), indent=2, default=str))
+    elif args.command in ("gold-export", "gold-check"):
+        from .gold import check, export
+        from .mimic import MimicPaths
+
+        work = MimicPaths.from_env().work_dir
+        res = export(work, args.n, args.overlap) if args.command == "gold-export" else check(work)
+        print(json.dumps(res, indent=2, default=str))
     elif args.command == "extract-bench":
         from .benchmark import score
 
