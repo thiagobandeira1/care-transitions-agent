@@ -72,3 +72,9 @@ def test_extractor_zero_and_few_shot_prompts() -> None:
     assert bad.run(NOTE).value is None
     with pytest.raises(ValueError):
         bad(NOTE)
+
+
+def test_schema_makes_the_model_emit_every_field() -> None:
+    schema = DischargeExtraction.model_json_schema()
+    assert schema["required"] == list(DischargeExtraction.model_fields)
+    assert DischargeExtraction(principal_diagnosis=None).follow_up == []  # defaults still work

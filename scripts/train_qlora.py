@@ -109,7 +109,7 @@ def main() -> None:
         eval_steps=200,
         save_steps=200,
         save_total_limit=2,
-        warmup_ratio=0.03,
+        warmup_steps=0.03,  # transformers 5: a float below 1 is a ratio of total steps
         lr_scheduler_type="cosine",
         report_to="none",
         seed=args.seed,

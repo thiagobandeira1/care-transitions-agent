@@ -1,10 +1,13 @@
 """The structured output of the discharge-summary extractor (Part A), versioned."""
 
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from .models import MedChangeType
 
-SCHEMA_VERSION = "1.0"
+# 1.1: every top-level key is required in the JSON schema (same instances as 1.0)
+SCHEMA_VERSION = "1.1"
 
 
 class Diagnosis(BaseModel):
@@ -24,7 +27,19 @@ class FollowUp(BaseModel):
     reason: str = ""
 
 
+def _require_every_key(schema: dict[str, Any]) -> None:
+    schema["required"] = list(schema.get("properties", {}))
+
+
 class DischargeExtraction(BaseModel):
+    """Every key is required in the JSON schema the model decodes against.
+
+    With optional keys, constrained decoding lets a model leave a whole field out; zero-shot
+    models did exactly that for follow-up and pending tests. Python defaults stay for callers.
+    """
+
+    model_config = ConfigDict(json_schema_extra=_require_every_key)
+
     principal_diagnosis: Diagnosis | None
     secondary_diagnoses: list[Diagnosis] = []
     medication_changes: list[MedicationChange] = []
