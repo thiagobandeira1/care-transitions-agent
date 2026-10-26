@@ -52,7 +52,8 @@ Qwen3 non-thinking sampling with field guidance in the prompt.
 
 - A morning batch of 15 discharges takes about 4 minutes with 14b on the GPU, or under 2 minutes with 8b.
   On CPU only it takes about 47 minutes (14b) or 17 minutes (8b), which is workable overnight at a practice
-  without a GPU. The CPU rows are 5 discharges each, so treat them as rough.
+  without a GPU. The CPU rows are 5 discharges each, so treat them as rough. Thiago's call (2026-10-26): the
+  GPU is the priority and these CPU numbers are enough, so no larger CPU run is planned.
 - The one 8b flag is a real error: a misspelled condition ("Pneumoma"). The grounding check has had no false
   alarms since it was fixed to normalize spacing and punctuation.
 - Earlier numbers (in git history) are superseded: the greedy run's timings (14b 19.0 s, 8b 21.9 s) were
