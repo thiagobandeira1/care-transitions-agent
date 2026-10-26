@@ -7,8 +7,10 @@ The agent runs on local 7-14B models. Small models are unreliable at choosing to
 actions, and a clinical workflow needs predictable, auditable behavior.
 
 ## Decision
-- The order of steps is fixed in code: ingest → score → ehr_context → extract → plan → draft → human_review →
-  track.
+- The order of steps is fixed in code: ingest → ehr_context → score → extract → plan → draft → human_review →
+  track. `ehr_context` runs before `score` because LACE's comorbidity part needs the problem list when the
+  payer feed has no diagnosis codes.
+- State holds JSON-ready dicts only, so checkpoints never need custom deserialization.
 - The LLM does only narrow jobs inside specific nodes: extraction, drafting, and explaining a decision that the
   rules already made.
 - Scoring, tiers, TCM deadlines and check-in scheduling are deterministic code.

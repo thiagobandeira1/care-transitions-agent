@@ -77,9 +77,10 @@ Part B's `extract` node.
 
 **Graph** (LangGraph, fixed order; the LLM never chooses tools):
 1. `ingest`: load and normalize the discharge event
-2. `score`: deterministic. LACE (LOS, acute via an ER encounter in the prior day, Charlson from a curated SNOMED
+2. `ehr_context`: problem list and active medications as of discharge (it runs before scoring because
+   Charlson needs the conditions)
+3. `score`: deterministic. LACE (LOS, acute via an ER encounter in the prior day, Charlson from a curated SNOMED
    condition list, ER visits in the prior 6 months) plus an under-65 flag
-3. `ehr_context`: problem list and active medications as of discharge
 4. `extract`: the Part A model, when a summary exists
 5. `plan`: rules set the tier (high = a visit within 2-3 days and check-ins around days 10 and 20) and the TCM
    clocks (99495/99496: contact within 2 business days; a face-to-face visit within 14 or 7 days). The LLM only

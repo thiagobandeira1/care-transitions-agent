@@ -1,11 +1,15 @@
 """Command line. Prints aggregates only.
 
-python -m ctagent cohort   # Synthea discharge cohort, LACE distribution, tiers
+python -m ctagent cohort                        # Synthea cohort, LACE distribution, tiers
+python -m ctagent bench --model qwen3:14b [--cpu]  # drafting latency + grounding (Synthea)
+python -m ctagent daily --date 2024-03-22          # check-ins due today (tracking DB)
 """
 
 import argparse
+import json
 import os
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -15,6 +19,7 @@ from .models import DischargeEvent, Disposition
 from .rules import plan_follow_up
 from .scoring import score_discharge
 from .synthea import SyntheaSource, build_cohort, patient_contexts
+from .tracking import Tracker
 
 DEFAULT_SYNTHEA = Path(__file__).resolve().parents[3] / "_synthea" / "output" / "csv"
 
@@ -57,15 +62,39 @@ def cmd_cohort(csv_dir: Path) -> None:
     print(f"LACE AUROC (synthetic sanity check, not clinical evidence): {auc:.3f}")
 
 
+def cmd_daily(db: Path, today: date) -> None:
+    due = Tracker(db).due_check_ins(today)
+    print(f"check-ins due on or before {today}: {len(due)}")
+    for episode_id, due_date in due:
+        print(f"  {episode_id} (due {due_date})")
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="ctagent")
-    p.add_argument("command", choices=["cohort"])
+    p.add_argument("command", choices=["cohort", "bench", "daily"])
     p.add_argument(
         "--synthea", type=Path, default=Path(os.environ.get("SYNTHEA_CSV_DIR", DEFAULT_SYNTHEA))
     )
+    p.add_argument("--model", default="qwen3:14b")
+    p.add_argument("--cpu", action="store_true", help="force CPU-only inference (num_gpu=0)")
+    p.add_argument("--n", type=int, default=20)
+    p.add_argument("--samples", type=int, default=0, help="save this many drafts as samples")
+    p.add_argument("--db", type=Path, default=Path("data/tracking.sqlite"))
+    p.add_argument("--date", type=date.fromisoformat, default=date.today())
     args = p.parse_args(argv)
     if args.command == "cohort":
         cmd_cohort(args.synthea)
+    elif args.command == "bench":
+        from .bench import run_bench
+
+        print(
+            json.dumps(
+                run_bench(args.synthea, args.model, args.n, args.cpu, samples=args.samples),
+                indent=2,
+            )
+        )
+    else:
+        cmd_daily(args.db, args.date)
 
 
 if __name__ == "__main__":

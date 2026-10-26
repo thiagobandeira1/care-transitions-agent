@@ -8,6 +8,10 @@ license = { text = "MIT" }
 authors = [{ name = "Thiago Bandeira", email = "thiagobatistanb@gmail.com" }]
 dependencies = [
     "duckdb>=2.0.0",
+    "langchain-core>=1,<2",
+    "langchain-ollama>=1.1.0",
+    "langgraph>=1.2,<2",
+    "langgraph-checkpoint-sqlite>=3.1.2",
     "pandas>=3.1.0",
     "pydantic>=2.8",
     "pytz>=2026.5",
