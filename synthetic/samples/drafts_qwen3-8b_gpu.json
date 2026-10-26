@@ -3,60 +3,50 @@
     "episode": 0,
     "tier": "standard",
     "lace": 3,
-    "explanation": "The patient, an 84-year-old male, was admitted on 2017-01-16 for aortic valve stenosis and was discharged home on 2017-01-18. Active medications at discharge include hydrocortisone, galantamine, and warfarin sodium. The patient has a LACE score of 3, indicating a moderate risk for readmission. The follow-up plan is standard tier with specific next steps outlined below for the hospital follow-up coordinator to manage the patient's care post-discharge. The coordinator should ensure all scheduled follow-up activities are completed as per the plan to support the patient's recovery and prevent readmission. The coordinator should also monitor the patient's condition and ensure that any changes in the patient's status are promptly addressed. The coordinator should also ensure that the patient is adhering to the prescribed medications and that any potential complications are identified and managed. The coordinator should also ensure that the patient is receiving appropriate care and support at home, including any necessary assistance with daily activities or medical equipment. The coordinator should also ensure that the patient is following up with their primary care provider and any other healthcare providers as needed. The coordinator should also ensure that the patient is receiving appropriate education and support to manage their conditions and medications effectively. The coordinator should also ensure that the patient is being monitored for any signs of complications or adverse effects related to their medications or conditions. The coordinator should also ensure that the patient is being followed up with as per the scheduled dates and that any necessary interventions are implemented in a timely manner. The coordinator should also ensure that the patient is being supported in their recovery and that any necessary resources are provided to the patient and their caregivers. The coordinator should also ensure that the patient is being followed up with in a manner that is consistent with the hospital's follow-up protocols and that all necessary documentation is completed and maintained. The coordinator should also ensure that the patient is being followed up with in a manner that is appropriate for their age, medical conditions, and overall health status. The coordinator should also ensure that the patient is being followed up with in a manner that is respectful of their privacy and confidentiality. The coordinator should also ensure that the patient is being followed up with in a manner that is culturally sensitive and appropriate for their background and circumstances. The coordinator should also ensure that the patient is being followed up with in a manner that is accessible and convenient for them, taking into account any mobility or transportation limitations. The coordinator should also ensure that the patient is being followed up with in a manner that is coordinated with other healthcare providers and services to provide comprehensive care. The coordinator should also ensure that the, the patient is being followed up with in a manner that is consistent with the hospital's quality improvement goals and that all necessary data is collected and reported for review and analysis. The coordinator should also ensure that the patient is being followed up with in a manner that is compliant with all relevant regulations and standards of care. The coordinator should also ensure that the patient is being followed up with in a manner that is safe and effective, with a focus on preventing readmissions and improving patient outcomes. The coordinator should also ensure that the patient is being followed up with in a manner that is timely and efficient, with a focus on optimizing resource use and minimizing delays in care. The coordinator should also ensure that the patient is being followed up with in a manner that is patient-centered and that the patient's preferences and needs are taken into account in the care plan. The coordinator should also ensure that the patient is being followed up with in a manner that is evidence-based and that the care provided is grounded in the best available medical knowledge and practices. The coordinator should also ensure that the patient is being followed up with in a manner that is collaborative and that the patient and their caregivers are actively involved in the care process. The coordinator should also ensure that the patient is being followed up with in a manner that is transparent and that the patient is fully informed about their condition, treatment, and follow-up plan. The coordinator should also ensure that the patient is being followed up with in a manner that is compassionate and that the patient's emotional and psychological needs are addressed as part of their overall care. The coordinator should also ensure that the patient is being followed up with in a manner that is holistic and that the patient's physical, emotional, and social well-being is considered in the care plan. The coordinator should also ensure that the patient is being followed up with in a manner that is continuous and that the care provided is ongoing and sustained over time. The coordinator should also ensure that the patient is being followed up with in a manner that is adaptable and that the care plan can be modified as needed based on the patient's changing needs and circumstances. The coordinator should also ensure that the patient is being followed up with in a manner that is proactive and that potential issues are identified and addressed before they become more serious. The coordinator should also ensure that the patient is being followed up with in a manner that is preventive and that the care provided is focused on preventing complications and promoting long-term health. The coordinator should also ensure that the patient is being followed up with in a manner that is integrated and that the care provided is coordinated across all healthcare providers and services involved in the patient's care. The coordinator should also ensure that the patient is being followed up with in a manner that is comprehensive and that all aspects of the patient's health and well-being are addressed in the care plan. The coordinator should also ensure that the patient is being followed up with in a manner that is personalized and that the care provided is tailored to the patient's individual needs and circumstances. The coordinator should also ensure that the patient is being followed up with in a manner that is respectful and that the patient's dignity and autonomy are maintained throughout the care process. The coordinator should also ensure that the patient is being followed up with in a manner that is ethical and that the care provided is in line with the principles of medical ethics and patient rights. The coordinator should also ensure that the patient is being followed up with in a manner that is sustainable and that the care provided is feasible and manageable within the resources available. The coordinator should also ensure that the patient is being followed up with in a manner that is innovative and that the care provided is based on the latest advancements in medical science and technology. The coordinator should also ensure that the patient is being followed up with in a manner that is inclusive and that the care provided is accessible to all patients regardless of their background, culture, or socioeconomic status. The coordinator should also ensure that the patient is being followed up with in a manner that is equitable and that the care provided is fair and just for all patients. The coordinator should also ensure that the patient is being followed up with in a manner that is accountable and that the care provided is transparent and can be reviewed and evaluated for quality and effectiveness. The coordinator should also ensure that the patient is being followed up with in a manner that is responsive and that the care provided is flexible and can be adjusted to meet the patient's changing needs and circumstances. The coordinator should also ensure that the patient is being followed up with in a manner that is resilient and that the care provided is able to withstand challenges and adapt to changing conditions. The coordinator should also ensure that the patient is being followed up with in a manner that is resilient and that the care provided is able to withstand",
+    "explanation": "This patient was admitted for aortic valve stenosis and is classified under the standard tier. The next steps include a follow-up visit by 2017-01-25, a TCM contact by 2017-01-20, and a TCM 99495 face-to-face visit by 2017-02-01. No check-ins are scheduled.",
     "flags": [],
     "call_script": {
-      "opening": "Hello, this is [Your Name] from [Practice Name]. I'm calling to follow up on your father, [Patient Name]. I just wanted to check in and make sure he's doing well at home since he was discharged on January 18th, 2017.",
+      "opening": "Hello, this is the hospital follow-up coordinator calling. I'm reaching out to check in on your recovery and make sure you're doing well at home.",
       "questions": [
-        "Has he been feeling any better since he came home?",
-        "Has he been taking all his medications as prescribed?",
-        "Has he had any trouble with his symptoms, like shortness of breath or chest pain?"
+        "Have you been feeling any new symptoms since you were discharged?",
+        "Are you taking all your medications as prescribed?",
+        "Have you had any trouble with your appetite or sleep since coming home?"
       ],
       "medication_review": [
         {
           "name": "warfarin sodium",
           "change": "started",
-          "note": ""
-        },
-        {
-          "name": "galantamine",
-          "change": "continued",
-          "note": ""
-        },
-        {
-          "name": "hydrocortisone",
-          "change": "continued",
-          "note": ""
+          "note": "This medication is used to help prevent blood clots, but it requires regular monitoring of your blood."
         }
       ],
       "warning_signs": [
-        "If he has any new symptoms like chest pain, difficulty breathing, or if he starts bleeding easily, please call us right away."
+        "If you experience unusual bleeding or bruising, contact your healthcare provider immediately.",
+        "If you have chest pain, shortness of breath, or severe swelling in your legs, seek emergency care."
       ],
-      "scheduling": "We have a scheduled visit on January 25th, 2017, and a TCM contact on January 20th, 2017. There's also a face-to-face TCM appointment scheduled for February 1st, 2017. If you need to reschedule or have any questions, just let me know."
+      "scheduling": "We have scheduled a follow-up visit for you on or before January 25, 2017. Please let us know if you need to reschedule or have any concerns."
     },
     "brief": {
-      "reason_for_admission": "Aortic valve stenosis",
+      "reason_for_admission": "Aortic valve stenosis (disorder).",
       "key_conditions": [
         "Aortic valve stenosis",
         "Alzheimer's disease",
         "Sinusitis",
-        "Acute viral pharyngitis",
-        "Gingivitis",
-        "Gingival disease"
+        "Acute viral pharyngitis"
       ],
       "medication_changes": [
         {
           "name": "warfarin sodium",
           "change": "started",
-          "note": ""
+          "note": "Warfarin was initiated during the hospital stay for anticoagulation."
         }
       ],
       "watch_for": [
-        "Aortic valve stenosis complications",
-        "Alzheimer's disease progression",
-        "Infection control (sinusitis, pharyngitis, gingivitis)"
+        "Signs of bleeding or bruising due to warfarin use",
+        "Worsening symptoms of aortic valve stenosis",
+        "Cognitive changes related to Alzheimer's disease",
+        "Recurrence of sinusitis or pharyngitis"
       ],
-      "risk_summary": "LACE score 3 (length of stay 2, acute 0, comorbidity 1, ER visits 0); under 65: False"
+      "risk_summary": "The patient has a moderate readmission risk due to a LACE score of 3, driven by a short length of stay and the presence of multiple comorbid conditions."
     },
     "plan": {
       "tier": "standard",
@@ -74,81 +64,28 @@
     "episode": 1,
     "tier": "standard",
     "lace": 5,
-    "explanation": "The patient, a 72-year-old male, was admitted on 2020-12-02 and discharged on 2020-12-12 after a 10-day hospital stay. The primary reason for admission was a disease caused by severe acute respiratory syndrome coronavirus 2 (SARS-CoV-2), with additional diagnoses including pneumonia, hypoxemia, and acute deep venous thrombosis. Other conditions include obstructive sleep apnea syndrome, essential hypertension, osteoarthritis of the knee, and several other comorbidities. No medication changes were recorded during the hospital stay. Active medications at discharge include vitamin B, naproxen sodium, clopidogrel, simvastatin, metoprolol succinate, nitroglycerin, hydrochlorothiazide, and lisinopril. The LACE score is 5, indicating a moderate risk of readmission. The follow-up plan includes a standard tier of care with a scheduled visit by 2020-12-19, a TCM contact by 2020-12-15, and a TCM 99495 face-to-face visit by 2020-12-26. No check-ins are scheduled at this time. The follow-up coordinator should ensure all scheduled appointments and contacts are arranged and documented, and monitor for any signs of readmission or complications related to the patient's conditions, particularly those related to the respiratory system, cardiovascular system, and thrombosis. The coordinator should also ensure that the patient is adhering to prescribed medications and managing comorbid conditions such as hypertension, sleep apnea, and osteoarthritis. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE score and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's age and potential risk factors for readmission, and ensure that appropriate follow-up is provided to support the patient's recovery and prevent complications. The coordinator should also be aware of the patient's LACE",
+    "explanation": "This patient was discharged on a standard follow-up tier with scheduled visits and TCM contacts. The next steps include a face-to-face TCM visit by 2020-12-26 and a scheduled visit by 2020-12-19.",
     "flags": [],
     "call_script": {
-      "opening": "Hello, this is [Your Name] from [Primary Care Practice Name]. I'm calling to follow up on your recent hospital stay. I understand you were admitted on December 2nd, 2020, and were discharged on December 12th, 2020. How are you feeling since you've been home?",
+      "opening": "Hello, this is the hospital follow-up coordinator. I'm calling to check in on your recovery and make sure you're feeling well after your recent hospital stay.",
       "questions": [
-        "Did you have any issues with your medications after you were discharged?",
-        "Were you able to manage your symptoms at home, like your sleep apnea or high blood pressure?",
-        "Did you have any follow-up appointments or tests scheduled after your discharge?",
-        "Have you had any changes in your condition since you've been home?"
+        "Have you been feeling any better since you were discharged?",
+        "Are you still experiencing any symptoms like shortness of breath, chest pain, or trouble sleeping?",
+        "Have you had any trouble with your medications since you left the hospital?"
       ],
-      "medication_review": [
-        {
-          "name": "Vitamin B",
-          "change": "continued",
-          "note": ""
-        },
-        {
-          "name": "Naproxen Sodium",
-          "change": "continued",
-          "note": ""
-        },
-        {
-          "name": "Clopidogrel",
-          "change": "continued",
-          "note": ""
-        },
-        {
-          "name": "Simvastatin",
-          "change": "continued",
-          "note": ""
-        },
-        {
-          "name": "Metoprolol Succinate",
-          "change": "continued",
-          "note": ""
-        },
-        {
-          "name": "Nitroglycerin",
-          "change": "continued",
-          "note": ""
-        },
-        {
-          "name": "Hydrochlorothiazide",
-          "change": "continued",
-          "note": ""
-        },
-        {
-          "name": "Lisinopril",
-          "change": "continued",
-          "note": ""
-        }
-      ],
+      "medication_review": [],
       "warning_signs": [
-        "chest pain or pressure",
-        "shortness of breath",
-        "dizziness or fainting",
-        "new or worsening swelling in the legs",
-        "fever or chills",
-        "persistent cough",
-        "difficulty sleeping",
-        "new or worsening pain in the knee"
+        "If you experience chest pain or pressure, seek immediate medical attention.",
+        "If you have trouble breathing, sudden confusion, or severe pain in your legs, go to the emergency room.",
+        "If you notice any new or worsening symptoms, especially difficulty breathing or chest discomfort, please call your healthcare provider right away."
       ],
-      "scheduling": "Your care team has scheduled a follow-up visit on December 19th, 2020. A TCM contact is also scheduled for December 15th, 2020, and a face-to-face TCM visit is planned for December 26th, 2020. If you have any questions or need to reschedule, please let me know. We also have a standard tier plan in place for your care. If you have any other questions or need further assistance, I'm here to help. Thank you for your time."
+      "scheduling": "We recommend you come in for a follow-up visit by December 19, 2020. If you're unable to make it then, let us know and we'll schedule another time that works for you."
     },
     "brief": {
-      "reason_for_admission": "Disease caused by severe acute respiratory syndrome coronavirus 2 (disorder)",
+      "reason_for_admission": "The patient was admitted due to disease caused by severe acute respiratory syndrome coronavirus 2 (disorder).",
       "key_conditions": [
-        "Sleep disorder",
         "Obstructive sleep apnea syndrome",
         "Essential hypertension",
-        "Osteoarthritis of knee",
-        "Gingivitis",
-        "Gingival disease",
-        "Otitis media",
-        "Polyp of colon",
         "Ischemic heart disease",
         "Pneumonia",
         "Hypoxemia",
@@ -156,15 +93,13 @@
       ],
       "medication_changes": [],
       "watch_for": [
-        "Pneumonia",
-        "Hypoxemia",
-        "Acute deep venous thrombosis",
-        "Ischemic heart disease",
-        "Obstructive sleep apnea syndrome",
-        "Essential hypertension",
-        "Osteoarthritis of knee"
+        "Signs of respiratory distress or worsening hypoxemia",
+        "Symptoms of deep venous thrombosis recurrence",
+        "Control of blood pressure and signs of heart failure",
+        "Sleep quality and management of obstructive sleep apnea",
+        "Gingival disease progression or infection"
       ],
-      "risk_summary": "LACE score 5 (length of stay 5, acute 0, comorbidity 0, ER visits 0); under 65: False."
+      "risk_summary": "The patient has a moderate readmission risk due to a prolonged length of stay and multiple comorbid conditions, including ischemic heart disease and pneumonia."
     },
     "plan": {
       "tier": "standard",
@@ -182,133 +117,90 @@
     "episode": 2,
     "tier": "standard",
     "lace": 8,
-    "explanation": "The patient, a 72-year-old male, was admitted on 2016-12-18 for an acute non-ST segment elevation myocardial infarction (NSTEMI) and was discharged home on 2016-12-20 after a 2-day hospital stay. The patient has multiple comorbidities including diabetes mellitus type 2, essential hypertension, hyperglycemia, hypertriglyceridemia, metabolic syndrome, and chronic kidney disease due to diabetes. Medications were adjusted during the hospital stay, and a comprehensive list of active medications at discharge is provided. The LACE score is 8, indicating a moderate risk of readmission or adverse outcomes. The follow-up plan includes a standard tier of care with specific follow-up steps outlined below for the hospital follow-up coordinator to implement as part of the post-discharge care plan for the patient. The coordinator is responsible for ensuring these steps are completed as per the plan and coordinating with the appropriate care team members to support the patient's recovery and prevent readmission or complications. The coordinator should also ensure that all follow-up steps are documented and that any issues or concerns are promptly addressed to support the patient's ongoing care and recovery. The coordinator should also ensure that the patient is provided with clear instructions on medication management, lifestyle modifications, and follow-up care to support their health and well-being. The coordinator should also ensure that the patient is provided with access to necessary resources and support services to help them manage their conditions and improve their quality of life. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the, the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure that the patient is provided with education and support to help them manage their conditions and improve their health outcomes. The coordinator should also ensure that the patient is provided with a comprehensive care plan that includes all necessary medications, lifestyle modifications, and follow-up care to support their recovery and long-term health. The coordinator should also ensure that the patient is provided with regular follow-up care and monitoring to track their progress and address any potential issues or complications that may arise. The coordinator should also ensure",
+    "explanation": "This patient was admitted for an acute non-ST segment elevation myocardial infarction and discharged to home after a 2-day stay. The follow-up tier is standard, requiring a visit by 2016-12-27, TCM contact by 2016-12-22, and a TCM 99495 face-to-face visit by 2017-01-03. The coordinator should ensure these appointments are scheduled and followed up on.",
     "flags": [],
     "call_script": {
-      "opening": "Hello, this is [Your Name] from [Primary Care Practice Name]. I'm calling to follow up on your recent hospital stay. I understand you were admitted on December 18th, 2016, and were discharged on December 20th, 2016. How are you feeling since then?",
+      "opening": "Hello, this is the hospital follow-up coordinator calling. I'm reaching out to check in and make sure you're feeling better after your recent hospital stay.",
       "questions": [
-        "Did you have any issues with your medications when you got home?",
-        "Have you been keeping up with your blood sugar checks?",
-        "Did your doctor give you any specific instructions for when you're feeling unwell?",
-        "Have you had any changes in your symptoms since you were discharged?"
+        "Are you still experiencing any chest pain or discomfort?",
+        "Have you had any shortness of breath or unusual fatigue since being discharged?",
+        "Do you understand how to take your medications and when to take them?",
+        "Have you had any trouble with your blood sugar levels or any other symptoms that worry you?"
       ],
       "medication_review": [
         {
-          "name": "Aspirin",
+          "name": "aspirin",
           "change": "started",
-          "note": "This is to help prevent future heart issues."
+          "note": "Take one aspirin tablet daily to help prevent heart problems."
         },
         {
-          "name": "Atorvastatin",
+          "name": "atorvastatin",
           "change": "started",
-          "note": "This is to help lower your cholesterol."
+          "note": "This medication helps lower cholesterol and should be taken as prescribed."
         },
         {
-          "name": "Losartan potassium",
+          "name": "losartan potassium",
           "change": "started",
-          "note": "This is to help manage your blood pressure."
+          "note": "This is used to control high blood pressure and should be taken regularly."
         },
         {
-          "name": "Metoprolol tartrate",
+          "name": "metoprolol tartrate",
           "change": "started",
-          "note": "This is to help manage your heart rate and blood pressure."
-        },
-        {
-          "name": "Clopidogrel",
-          "change": "continued",
-          "note": "This is to help prevent blood clots."
-        },
-        {
-          "name": "Simvastatin",
-          "change": "continued",
-          "note": "This is to help lower your cholesterol."
-        },
-        {
-          "name": "Metoprolol succinate",
-          "change": "continued",
-          "note": "This is to help manage your heart rate and blood pressure."
-        },
-        {
-          "name": "Nitroglycerin",
-          "change": "continued",
-          "note": "This is for use when you're having chest pain or discomfort."
-        },
-        {
-          "name": "Insulin isophane human",
-          "change": "continued",
-          "note": "This is to help manage your blood sugar."
-        },
-        {
-          "name": "Tacrolimus",
-          "change": "continued",
-          "note": "This is for your kidney health."
-        },
-        {
-          "name": "Metformin hydrochloride",
-          "change": "continued",
-          "note": "This is to help manage your diabetes."
-        },
-        {
-          "name": "Lisinopril",
-          "change": "continued",
-          "note": "This is to help manage your blood pressure."
+          "note": "This medication helps with heart rate and blood pressure, take as directed."
         }
       ],
       "warning_signs": [
-        "chest pain or discomfort",
-        "shortness of breath",
-        "dizziness or fainting",
-        "severe headache",
-        "confusion",
-        "new or worsening swelling in your legs or feet",
-        "fever or chills"
+        "Chest pain that is new or worse",
+        "Shortness of breath or difficulty breathing",
+        "Severe dizziness or fainting",
+        "Signs of a heart attack (such as cold sweat, nausea, or pain in the jaw, back, or arms)",
+        "Severe or uncontrolled chest pain"
       ],
-      "scheduling": "Your doctor has scheduled a visit for December 27th, 2016. We also have a TCM contact scheduled for December 22nd, 2016, and a face-to-face TCM visit on January 3rd, 2017. If you need to reschedule or have any questions, please let me know."
+      "scheduling": "We would like to schedule a follow-up visit by 2016-12-27 to review your progress and ensure everything is going well. Please let us know a time that works for you."
     },
     "brief": {
-      "reason_for_admission": "Acute non-ST segment elevation myocardial infarction",
+      "reason_for_admission": "Acute non-ST segment elevation myocardial infarction (disorder).",
       "key_conditions": [
         "Diabetes mellitus type 2",
         "Essential hypertension",
+        "Ischemic heart disease",
         "Metabolic syndrome X",
         "Hypertriglyceridemia",
         "Hyperglycemia",
-        "Microalbuminuria due to type 2 diabetes mellitus",
         "Proteinuria due to type 2 diabetes mellitus",
-        "Disorder of kidney due to diabetes mellitus",
-        "Ischemic heart disease",
-        "Myocardal infarction",
-        "Polyp of colon",
-        "Anemia",
-        "Loss of teeth"
+        "Microalbuminuria due to type 2 diabetes mellitus",
+        "Disorder of kidney due to diabetes mellitus"
       ],
       "medication_changes": [
         {
           "name": "aspirin",
           "change": "started",
-          "note": ""
+          "note": "Continue long-term for cardiac protection."
         },
         {
           "name": "atorvastatin",
           "change": "started",
-          "note": ""
+          "note": "Added for lipid management post-MI."
         },
         {
           "name": "losartan potassium",
           "change": "started",
-          "note": ""
+          "note": "Initiated for blood pressure control and kidney protection."
         },
         {
           "name": "metoprolol tartrate",
           "change": "started",
-          "note": ""
+          "note": "Added for beta-blockade in post-MI management."
         }
       ],
       "watch_for": [
-        "LACE score 8 (length of stay 2, acute 3, comorbidity 3, ER visits 0)",
-        "under 65: False"
+        "Signs of heart failure or arrhythmias",
+        "Changes in blood pressure or kidney function",
+        "Symptoms of hyperglycemia or hypoglycemia",
+        "New or worsening chest pain",
+        "Medication adherence and side effects"
       ],
-      "risk_summary": "LACE score 8 indicates moderate risk of readmission or adverse outcomes. Patient is over 65, so the under 65 risk is not applicable."
+      "risk_summary": "The patient has a moderate readmission risk due to multiple comorbidities, including diabetes mellitus, ischemic heart disease, and kidney dysfunction."
     },
     "plan": {
       "tier": "standard",

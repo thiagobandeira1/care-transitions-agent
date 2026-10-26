@@ -4,9 +4,9 @@
   "seed": 7,
   "device": "gpu",
   "seconds_per_discharge": {
-    "mean": 18.993519823328825,
-    "median": 16.39562140000635,
-    "max": 38.30375550000463
+    "mean": 15.797950776672224,
+    "median": 15.524705199990422,
+    "max": 23.10556820000056
   },
   "llm_calls_per_discharge": 3,
   "discharges_with_schema_failure": 0,
@@ -16,5 +16,5 @@
     "standard": 21,
     "high": 9
   },
-  "morning_batch_minutes_for_15_discharges": 4.748379955832206
+  "morning_batch_minutes_for_15_discharges": 3.949487694168056
 }

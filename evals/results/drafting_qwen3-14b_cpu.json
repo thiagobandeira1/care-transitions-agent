@@ -1,19 +1,20 @@
 {
   "model": "qwen3:14b (cpu)",
-  "n": 3,
+  "n": 5,
   "seed": 7,
   "device": "cpu",
   "seconds_per_discharge": {
-    "mean": 166.54771856664834,
-    "median": 172.06108569999924,
-    "max": 199.98114069999428
+    "mean": 186.26276962000412,
+    "median": 187.37885769997956,
+    "max": 279.00000170001294
   },
   "llm_calls_per_discharge": 3,
   "discharges_with_schema_failure": 0,
   "discharges_with_grounding_violation": 0,
   "grounding_violations_total": 0,
   "tiers": {
-    "standard": 3
+    "standard": 4,
+    "high": 1
   },
-  "morning_batch_minutes_for_15_discharges": 41.636929641662086
+  "morning_batch_minutes_for_15_discharges": 46.56569240500103
 }

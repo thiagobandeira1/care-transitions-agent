@@ -4,17 +4,17 @@
   "seed": 7,
   "device": "cpu",
   "seconds_per_discharge": {
-    "mean": 195.37312181999442,
-    "median": 225.35707369999727,
-    "max": 258.73482349998085
+    "mean": 69.20435670000734,
+    "median": 67.71840380004141,
+    "max": 96.68458719999762
   },
   "llm_calls_per_discharge": 3,
   "discharges_with_schema_failure": 0,
-  "discharges_with_grounding_violation": 2,
-  "grounding_violations_total": 2,
+  "discharges_with_grounding_violation": 0,
+  "grounding_violations_total": 0,
   "tiers": {
     "standard": 4,
     "high": 1
   },
-  "morning_batch_minutes_for_15_discharges": 48.843280454998606
+  "morning_batch_minutes_for_15_discharges": 17.301089175001835
 }

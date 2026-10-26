@@ -4,17 +4,17 @@
   "seed": 7,
   "device": "gpu",
   "seconds_per_discharge": {
-    "mean": 21.947347220004303,
-    "median": 22.547302849998232,
-    "max": 45.84332019998692
+    "mean": 6.223224886665897,
+    "median": 5.530783549998887,
+    "max": 10.917567300028168
   },
   "llm_calls_per_discharge": 3,
-  "discharges_with_schema_failure": 1,
-  "discharges_with_grounding_violation": 3,
-  "grounding_violations_total": 5,
+  "discharges_with_schema_failure": 0,
+  "discharges_with_grounding_violation": 1,
+  "grounding_violations_total": 1,
   "tiers": {
     "standard": 21,
     "high": 9
   },
-  "morning_batch_minutes_for_15_discharges": 5.486836805001076
+  "morning_batch_minutes_for_15_discharges": 1.5558062216664743
 }
