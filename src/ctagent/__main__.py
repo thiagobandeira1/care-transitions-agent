@@ -3,6 +3,8 @@
 python -m ctagent cohort                        # Synthea cohort, LACE distribution, tiers
 python -m ctagent bench --model qwen3:14b [--cpu]  # drafting latency + grounding (Synthea)
 python -m ctagent daily --date 2024-03-22          # check-ins due today (tracking DB)
+python -m ctagent make-benchmark --n 150           # synthetic notes with known answers
+python -m ctagent extract-bench --mode zero|few|rules [--model qwen3:8b]
 """
 
 import argparse
@@ -71,7 +73,9 @@ def cmd_daily(db: Path, today: date) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="ctagent")
-    p.add_argument("command", choices=["cohort", "bench", "daily"])
+    p.add_argument(
+        "command", choices=["cohort", "bench", "daily", "make-benchmark", "extract-bench"]
+    )
     p.add_argument(
         "--synthea", type=Path, default=Path(os.environ.get("SYNTHEA_CSV_DIR", DEFAULT_SYNTHEA))
     )
@@ -80,6 +84,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--n", type=int, default=20)
     p.add_argument("--samples", type=int, default=0, help="save this many drafts as samples")
     p.add_argument("--db", type=Path, default=Path("data/tracking.sqlite"))
+    p.add_argument("--mode", choices=["zero", "few", "rules"], default="zero")
     p.add_argument("--date", type=date.fromisoformat, default=date.today())
     args = p.parse_args(argv)
     if args.command == "cohort":
@@ -93,6 +98,15 @@ def main(argv: list[str] | None = None) -> None:
                 indent=2,
             )
         )
+    elif args.command == "make-benchmark":
+        from .benchmark import build
+
+        print(json.dumps(build(args.synthea, args.n, args.model), indent=2))
+    elif args.command == "extract-bench":
+        from .benchmark import score
+
+        model = None if args.mode == "rules" else args.model
+        print(json.dumps(score(args.mode, model), indent=2))
     else:
         cmd_daily(args.db, args.date)
 

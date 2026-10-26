@@ -73,6 +73,10 @@ class OllamaLLM:
             keep_alive="10m",
         )
 
+    def complete(self, system: str, prompt: str) -> str:
+        """Free text (used only to write synthetic notes)."""
+        return str(self._chat.invoke([("system", system), ("human", prompt)]).content)
+
     def generate(self, schema: type[T], system: str, prompt: str) -> T:
         runnable = self._chat.with_structured_output(schema, method="json_schema")
         try:
