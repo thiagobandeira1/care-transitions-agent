@@ -3,7 +3,9 @@
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Protocol, TypeVar
+from enum import Enum
+from types import NoneType, UnionType
+from typing import Annotated, Any, Protocol, TypeVar, Union, get_args, get_origin
 
 from pydantic import BaseModel, ValidationError
 
@@ -42,8 +44,53 @@ def call_with_retry[R: BaseModel](
                 schema.model_validate(value.model_dump()), attempt, time.perf_counter() - start
             )
         except (LLMOutputError, ValidationError, ValueError) as e:
-            last_error = f"{type(e).__name__}: {str(e)[:200]}"
+            last_error = f"{type(e).__name__}: {_shorten(str(e))}"
     return CallResult(None, retries + 1, time.perf_counter() - start, last_error)
+
+
+def _shorten(msg: str, limit: int = 320) -> str:
+    """Keep the start and the end: a parse error ends with the validator's reason."""
+    return msg if len(msg) <= limit else f"{msg[:120]} ... {msg[-(limit - 125) :]}"
+
+
+def field_guide(schema: type[BaseModel]) -> str:
+    """The schema's fields and descriptions as prompt text.
+
+    Ollama uses a JSON schema only to constrain decoding; the model never sees the field
+    descriptions. Without this, guidance such as "2-3 sentences" never reached the model and
+    plan explanations ran on until the token cap (ADR 0007).
+    """
+    return "Return JSON with these fields:\n" + "\n".join(_field_lines(schema, ""))
+
+
+def _field_lines(model: type[BaseModel], indent: str) -> list[str]:
+    lines = []
+    for name, f in model.model_fields.items():
+        kind, inner = _kind(f.annotation)
+        desc = f": {f.description}" if f.description else ""
+        lines.append(f"{indent}- {name} ({kind}){desc}")
+        if inner is not None:
+            lines += _field_lines(inner, indent + "  ")
+    return lines
+
+
+def _kind(tp: Any) -> tuple[str, type[BaseModel] | None]:
+    """A plain-language type name, plus the nested model to describe under it."""
+    origin, args = get_origin(tp), get_args(tp)
+    if origin is Annotated:
+        return _kind(args[0])
+    if origin in (Union, UnionType):
+        kind, inner = _kind(next(a for a in args if a is not NoneType))
+        return (f"{kind} or null" if NoneType in args else kind), inner
+    if origin is list:
+        kind, inner = _kind(args[0])
+        return ("list of objects" if inner else f"list of {kind}"), inner
+    if isinstance(tp, type) and issubclass(tp, Enum):
+        return "one of: " + ", ".join(str(m.value) for m in tp), None
+    if isinstance(tp, type) and issubclass(tp, BaseModel):
+        return "object", tp
+    names = {str: "text", int: "integer", float: "number", bool: "true or false"}
+    return names.get(tp, "value"), None
 
 
 class OllamaLLM:

@@ -169,6 +169,9 @@ def test_prompt_contains_only_record_facts(tmp_path: Path) -> None:
     prompt = llm.calls[0][1]
     assert "Chronic kidney disease stage 4" in prompt and "furosemide (dose_changed)" in prompt
     assert "TCM 99496" in prompt
+    assert (
+        "- summary (text): 2-3 plain sentences" in prompt
+    )  # the schema's guidance reaches the model
 
 
 def test_review_survives_restart_with_sqlite_checkpointer(tmp_path: Path) -> None:

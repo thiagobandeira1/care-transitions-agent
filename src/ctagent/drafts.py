@@ -56,21 +56,21 @@ class PlanExplanation(BaseModel):
 class MedLine(BaseModel):
     name: str = Field(description="Medication name exactly as in the record (generic name)")
     change: MedChangeType
-    note: Short = Field(default="", description="What the patient or provider should know")
+    note: Short = Field(default="", description="One short sentence on what to know about it")
 
 
 class CallScript(BaseModel):
-    opening: Para = Field(description="Greeting and purpose of the call, plain language")
+    opening: Para = Field(description="1-2 sentences: greeting and purpose of the call")
     questions: Items = Field(description="3-6 questions about symptoms, understanding, needs")
     medication_review: list[MedLine] = Field(description="Only medications that changed")
     warning_signs: Items = Field(description="Symptoms that should prompt a call or the ER")
-    scheduling: Para = Field(description="The visit to offer, with the target date")
+    scheduling: Para = Field(description="1-2 sentences: the visit to offer and its target date")
 
 
 class ProviderBrief(BaseModel):
-    reason_for_admission: Para
+    reason_for_admission: Para = Field(description="One sentence, from the record")
     key_conditions: Items = Field(description="Relevant chronic conditions, names from record")
-    medication_changes: list[MedLine]
+    medication_changes: list[MedLine] = Field(description="Only medications that changed")
     watch_for: Items = Field(description="What to check at the follow-up visit")
     risk_summary: Para = Field(description="One sentence on readmission risk and its drivers")
 

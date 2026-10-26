@@ -64,7 +64,9 @@ def test_extractor_zero_and_few_shot_prompts() -> None:
     llm = FakeLLM({"DischargeExtraction": lambda p: REF})
     zero = Extractor(llm)
     assert zero(NOTE) == REF
-    assert "EXAMPLE" not in llm.calls[-1][1] and llm.calls[-1][1].startswith("SUMMARY:")
+    assert "EXAMPLE" not in llm.calls[-1][1]
+    assert llm.calls[-1][1].startswith("Return JSON with these fields:")
+    assert "\n\nSUMMARY:\n" in llm.calls[-1][1]
     few = Extractor(llm, [Example(note=NOTE, label=REF)])
     few(NOTE)
     assert "EXAMPLE 1" in llm.calls[-1][1] and "NOW THE REAL ONE" in llm.calls[-1][1]

@@ -6,7 +6,7 @@ The same interface serves the fine-tuned model later (its own Ollama tag, zero-s
 from dataclasses import dataclass, field
 
 from .extraction import DischargeExtraction
-from .llm import CallResult, StructuredLLM, call_with_retry
+from .llm import CallResult, StructuredLLM, call_with_retry, field_guide
 from .notes import extraction_input
 
 SYSTEM = (
@@ -36,7 +36,7 @@ class Extractor:
             shots.append(f"EXAMPLE {i}\nSUMMARY:\n{text}\nJSON:\n{ex.label.model_dump_json()}")
         text, _ = extraction_input(note)
         head = ("\n\n".join(shots) + "\n\nNOW THE REAL ONE\n") if shots else ""
-        return f"{head}SUMMARY:\n{text}\nJSON:"
+        return f"{field_guide(DischargeExtraction)}\n\n{head}SUMMARY:\n{text}\nJSON:"
 
     def __call__(self, note: str) -> DischargeExtraction:
         r = self.run(note)

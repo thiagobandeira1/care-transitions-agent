@@ -10,7 +10,8 @@ from pydantic import BaseModel, ValidationError
 import ctagent.bench as bench
 import ctagent.llm as llm_mod
 from ctagent.drafts import CallScript, PlanExplanation, ProviderBrief
-from ctagent.llm import FakeLLM, LLMOutputError, OllamaLLM
+from ctagent.extraction import DischargeExtraction
+from ctagent.llm import FakeLLM, LLMOutputError, OllamaLLM, call_with_retry, field_guide
 from ctagent.privacy import PrivacyError
 from fixtures import SyntheaFixture
 from test_graph import good
@@ -103,6 +104,25 @@ def test_ollama_llm_wraps_parse_failures() -> None:
     )
     with pytest.raises(LLMOutputError, match="expected PlanExplanation"):
         m.generate(PlanExplanation, "s", "p")
+
+
+def test_field_guide_shows_the_model_every_description() -> None:
+    guide = field_guide(CallScript)
+    assert "- questions (list of text): 3-6 questions" in guide
+    assert "- medication_review (list of objects): Only medications that changed" in guide
+    assert "  - change (one of: started, stopped, dose_changed, continued)" in guide
+    extraction = field_guide(DischargeExtraction)
+    assert "- principal_diagnosis (object or null): The main reason" in extraction
+    assert "continued ones too" in extraction
+
+
+def test_retry_error_keeps_the_validator_reason() -> None:
+    reason = "longer than 1000 characters (runaway generation)"
+    long_failure = LLMOutputError("Failed to parse PlanExplanation " + "x" * 5000 + reason)
+    r = call_with_retry(
+        FakeLLM({"PlanExplanation": lambda p: long_failure}), PlanExplanation, "", ""
+    )
+    assert r.value is None and r.error.endswith(reason) and len(r.error) < 400
 
 
 def test_bench_writes_aggregates_and_synthetic_samples(

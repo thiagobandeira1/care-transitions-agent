@@ -28,7 +28,7 @@ from .drafts import (
     grounding_violations,
     record_text,
 )
-from .llm import CallResult, StructuredLLM, call_with_retry
+from .llm import CallResult, StructuredLLM, call_with_retry, field_guide
 from .models import DischargeEvent, FollowUpPlan, PatientContext, RiskScore
 from .rules import DEFAULT_RULES, PlanRules, plan_follow_up
 from .scoring import score_discharge
@@ -97,7 +97,9 @@ def build_graph(deps: Deps, checkpointer: BaseCheckpointSaver[Any]) -> CompiledS
     def plan(s: State) -> dict[str, Any]:
         ev, risk = event_of(s), RiskScore.model_validate(s["score"])
         p = plan_follow_up(ev.discharge.date(), risk, ev.disposition, deps.rules)
-        prompt = _prompt(s, p, "Explain the follow-up tier and next steps for the coordinator.")
+        prompt = _prompt(
+            s, p, "Explain the follow-up tier and next steps for the coordinator.", PlanExplanation
+        )
         r = call_with_retry(deps.llm, PlanExplanation, SYSTEM, prompt)
         out: dict[str, Any] = {"plan": p.model_dump(mode="json"), "llm_seconds": r.seconds}
         if r.value is None:
@@ -118,7 +120,10 @@ def build_graph(deps: Deps, checkpointer: BaseCheckpointSaver[Any]) -> CompiledS
             CallScript,
             SYSTEM,
             _prompt(
-                s, p, "Write the coordinator's phone call script for this patient, plain language."
+                s,
+                p,
+                "Write the coordinator's phone call script for this patient, plain language.",
+                CallScript,
             ),
         )
         brief = call_with_retry(
@@ -126,7 +131,10 @@ def build_graph(deps: Deps, checkpointer: BaseCheckpointSaver[Any]) -> CompiledS
             ProviderBrief,
             SYSTEM,
             _prompt(
-                s, p, "Write a one-page brief for the provider seeing this patient after discharge."
+                s,
+                p,
+                "Write a one-page brief for the provider seeing this patient after discharge.",
+                ProviderBrief,
             ),
         )
         results: list[tuple[str, CallResult[Any]]] = [
@@ -202,14 +210,15 @@ def build_graph(deps: Deps, checkpointer: BaseCheckpointSaver[Any]) -> CompiledS
     return g.compile(checkpointer=checkpointer)
 
 
-def _prompt(s: State, p: FollowUpPlan, task: str) -> str:
+def _prompt(s: State, p: FollowUpPlan, task: str, schema: type[BaseModel]) -> str:
     ev = DischargeEvent.model_validate(s["event"])
     ctx = PatientContext.model_validate(s["context"])
     risk = RiskScore.model_validate(s["score"])
     extra = ""
     if s.get("extraction"):
         extra = f"\nFrom the discharge summary: {s['extraction']}"
-    return f"{task}\n\nRECORD\n{record_text(ev, ctx, risk, p)}{extra}"
+    record = record_text(ev, ctx, risk, p)
+    return f"{task}\n\n{field_guide(schema)}\n\nRECORD\n{record}{extra}"
 
 
 def thread(episode_id: str) -> RunnableConfig:
