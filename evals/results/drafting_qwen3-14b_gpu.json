@@ -1,0 +1,20 @@
+{
+  "model": "qwen3:14b",
+  "n": 30,
+  "seed": 7,
+  "device": "gpu",
+  "seconds_per_discharge": {
+    "mean": 18.993519823328825,
+    "median": 16.39562140000635,
+    "max": 38.30375550000463
+  },
+  "llm_calls_per_discharge": 3,
+  "discharges_with_schema_failure": 0,
+  "discharges_with_grounding_violation": 0,
+  "grounding_violations_total": 0,
+  "tiers": {
+    "standard": 21,
+    "high": 9
+  },
+  "morning_batch_minutes_for_15_discharges": 4.748379955832206
+}

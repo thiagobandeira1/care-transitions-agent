@@ -1,0 +1,364 @@
+[
+  {
+    "episode": 0,
+    "tier": "standard",
+    "lace": 3,
+    "explanation": "The patient is 84 years old and was admitted for aortic valve stenosis from January 16 to January 18, 2017, and discharged to home. The LACE score is 3, indicating a moderate risk of readmission. The follow-up plan is standard tier. The next steps include a visit by January 25, 2017, a TCM contact by January 20, 2017, and a TCM face-to-face visit using code 99495 by February 1, 2017. There are no scheduled check-ins at this time.",
+    "flags": [],
+    "call_script": {
+      "opening": "Hello, this is [Your Name] from [Practice Name]. I'm calling to follow up on your recent hospital stay.",
+      "questions": [
+        "Can you tell me how you're feeling since you've been home?",
+        "Have you been taking your medications as prescribed?",
+        "Have you had any problems with bleeding or bruising since you started warfarin?",
+        "Have you seen a healthcare provider since you've been home?",
+        "Have you had any new symptoms or changes in your usual condition?"
+      ],
+      "medication_review": [
+        {
+          "name": "warfarin sodium",
+          "change": "started",
+          "note": ""
+        },
+        {
+          "name": "hydrocortisone",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "galantamine",
+          "change": "continued",
+          "note": ""
+        }
+      ],
+      "warning_signs": [
+        "Easy bruising or bleeding",
+        "Black or tarry stools",
+        "Severe headache or dizziness",
+        "Fever or chills",
+        "Worsening confusion or memory problems"
+      ],
+      "scheduling": "We have a plan to check in with you by January 25th, and a home visit is scheduled for February 1st. Please let us know if you need to speak with someone sooner or have any concerns before then."
+    },
+    "brief": {
+      "reason_for_admission": "Aortic valve stenosis",
+      "key_conditions": [
+        "Aortic valve stenosis",
+        "Gingivitis",
+        "Alzheimer's disease",
+        "Gingival disease",
+        "Sinusitis",
+        "Acute viral pharyngitis"
+      ],
+      "medication_changes": [
+        {
+          "name": "warfarin sodium",
+          "change": "started",
+          "note": ""
+        }
+      ],
+      "watch_for": [
+        "warfarin sodium",
+        "hydrocortisone",
+        "galantiamine"
+      ],
+      "risk_summary": "LACE score 3 (length of stay 2, acute 0, comorbidity 1, ER visits 0); under 65: False."
+    },
+    "plan": {
+      "tier": "standard",
+      "visit_by": "2017-01-25",
+      "contact_by": "2017-01-20",
+      "tcm_code": "99495",
+      "tcm_visit_by": "2017-02-01",
+      "check_ins": [],
+      "reasons": [
+        "LACE 3 below the high-risk thresholds"
+      ]
+    }
+  },
+  {
+    "episode": 1,
+    "tier": "standard",
+    "lace": 5,
+    "explanation": "The patient is a 72-year-old individual who was admitted for a disease caused by severe acute respiratory syndrome coronavirus 2 (disorder) and discharged home on 2020-12-12. The patient has multiple chronic conditions, including obstructive sleep apnea syndrome, essential hypertension, ischemic heart disease, and others. No medication changes were recorded during the hospital stay, and the patient was discharged on several active medications, including antihypertensives, antiplatelet agents, and others. The LACE score is 5, indicating a moderate risk for readmission. The follow-up plan is set to standard tier, with a scheduled visit by 2020-12-19, a TCM contact by 2020-12-15, and a TCM face-to-face visit by 2020-12-26. There are no scheduled check-ins at this time. The next steps for the hospital follow-up coordinator include ensuring the scheduled TCM contact and face-to-face visit occur on the specified dates, and coordinating with the primary care provider to ensure the scheduled visit by 2020-12-19 is completed. The coordinator should also monitor for any changes in the patient's condition and ensure that the patient is adhering to their medication regimen.",
+    "flags": [],
+    "call_script": {
+      "opening": "Hello, this is [Practice Name] Hospital Follow-Up Coordinator calling. How are you feeling today?",
+      "questions": [
+        "Can you tell me about any problems you're having since being discharged from the hospital?",
+        "Are you taking all of your medications as prescribed?",
+        "Have you had any trouble breathing or shortness of breath?",
+        "Have you been feeling more tired than usual?",
+        "Have you had any chest pain or discomfort?",
+        "Have you noticed any swelling in your legs or feet?",
+        "Have you had any trouble sleeping?",
+        "Have you had any changes in your vision or balance?",
+        "Have you had any new or worsening symptoms in your knees or joints?",
+        "Have you had any changes in your mouth or gums?",
+        "Have you had any new or worsening ear pain or drainage?",
+        "Have you had any changes in your bowel habits or new abdominal pain?",
+        "Have you had any new or worsening symptoms in your heart or chest?",
+        "Have you had any changes in your breathing or oxygen levels?",
+        "Have you had any new or worsening symptoms in your legs or veins?"
+      ],
+      "medication_review": [
+        {
+          "name": "vitamin b",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "naproxen sodium",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "clopidogrel",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "simvastatin",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "metoprolol succinate",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "nitroglycerin",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "hydrochlorothiazide",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "lisinopril",
+          "change": "continued",
+          "note": ""
+        }
+      ],
+      "warning_signs": [
+        "chest pain or discomfort",
+        "shortness of breath",
+        "swelling in the legs or feet",
+        "new or worsening symptoms in the heart or chest",
+        "changes in breathing or oxygen levels"
+      ],
+      "scheduling": "We have a follow-up appointment scheduled with your doctor by December 19th. We will also be contacting you from the Transitional Care Management team by December 15th, and we will be seeing you in person for a face-to-face visit by December 26th. Please let us know if you have any questions or need to reschedule."
+    },
+    "brief": {
+      "reason_for_admission": "Disease caused by severe acute respiratory syndrome coronavirus 2 (disorder)",
+      "key_conditions": [
+        "Sleep disorder",
+        "Obstructive sleep apnea syndrome",
+        "Essential hypertension",
+        "Osteoarthritis of knee",
+        "Gingivitis",
+        "Gingival disease",
+        "Otitis media",
+        "Polyp of colon",
+        "Ischemic heart disease",
+        "Pneumonia",
+        "Hypoxemia",
+        "Acute deep venous thrombosis"
+      ],
+      "medication_changes": [],
+      "watch_for": [
+        "Sleep disorder",
+        "Obstructive sleep apnea syndrome",
+        "Essential hypertension",
+        "Osteoarthritis of knee",
+        "Gingivitis",
+        "Gingival disease",
+        "Otitis media",
+        "Polyp of colon",
+        "Ischemic heart disease",
+        "Pneumonia",
+        "Hypoxemia",
+        "Acute deep venous thrombosis"
+      ],
+      "risk_summary": "LACE 5 (length of stay 5, acute 0, comorbidity 0, ER visits 0); under 65: False."
+    },
+    "plan": {
+      "tier": "standard",
+      "visit_by": "2020-12-19",
+      "contact_by": "2020-12-15",
+      "tcm_code": "99495",
+      "tcm_visit_by": "2020-12-26",
+      "check_ins": [],
+      "reasons": [
+        "LACE 5 below the high-risk thresholds"
+      ]
+    }
+  },
+  {
+    "episode": 2,
+    "tier": "standard",
+    "lace": 8,
+    "explanation": "The patient is a 72-year-old individual who was admitted for acute non-ST segment elevation myocardial infarction and discharged home after a 2-day hospital stay. The patient has multiple comorbid conditions, including diabetes mellitus type 2, hypertension, anemia, and kidney disease. Several medications were initiated during the hospital stay, and the patient was discharged on a complex medication regimen. The LACE score is 8, indicating a moderate risk for readmission, and the patient is assigned to the standard follow-up tier due to the nature of the admission and comorbidities. The follow-up plan includes a visit by December 27, 2016, a TCM contact by December 22, 2016, and a TCM face-to-face visit by January 3, 2017. There are no scheduled check-ins at this time. The follow-up coordinator should ensure that the patient is contacted by the TCM by the specified date and that the scheduled visit is arranged and completed as planned. The coordinator should also monitor for any changes in the patient's condition and ensure that the transition from hospital to home is smooth and well-coordinated with the primary care provider. The coordinator should also ensure that the patient is aware of the importance of adhering to the prescribed medication regimen and attending the scheduled follow-up visit. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the signs and symptoms of potential complications and knows when to seek medical attention. The coordinator should also ensure that the patient's family or caregivers are involved in the care plan as appropriate and that they are aware of the patient's condition and the need for follow-up care. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the importance of adhering to the prescribed medication regimen and attending the scheduled follow-up visit. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the signs and symptoms of potential complications and knows when to seek medical attention. The coordinator should also ensure that the patient's family or caregivers are involved in the care plan as appropriate and that they are aware of the patient's condition and the need for follow-up care. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the importance of adhering to the prescribed medication regimen and attending the scheduled follow-up visit. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the signs and symptoms of potential complications and knows when to seek medical attention. The coordinator should also ensure that the patient's family or caregivers are involved in the care plan as appropriate and that they are aware of the patient's condition and the need for follow-up care. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the importance of adhering to the prescribed medication regimen and attending the scheduled follow-up visit. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the signs and symptoms of potential complications and knows when to seek medical attention. The coordinator should also ensure that the patient's family or caregivers are involved in the care plan as appropriate and that they are aware of the patient's condition and the need for follow-up care. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the importance of adhering to the prescribed medication regimen and attending the scheduled follow-up visit. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the signs and symptoms of potential complications and knows when to seek medical attention. The coordinator should also ensure that the patient's family or caregivers are involved in the care plan as appropriate and that they are aware of the patient's condition and the need for follow-up care. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the importance of adhering to the prescribed medication regimen and attending the scheduled follow-up visit. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the signs and symptoms of potential complications and knows when to seek medical attention. The coordinator should also ensure that the patient's family or caregivers are involved in the care plan as appropriate and that they are aware of the patient's condition and the need for follow-up care. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the importance of adhering to the prescribed medication regimen and attending the scheduled follow-up visit. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the signs and symptoms of potential complications and knows when to seek medical attention. The coordinator should also ensure that the patient's family or caregivers are involved in the care plan as appropriate and that they are aware of the patient's condition and the need for follow-up care. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the importance of adhering to the prescribed medication regimen and attending the scheduled follow-up visit. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the signs and symptoms of potential complications and knows when to seek medical attention. The coordinator should also ensure that the patient's family or caregivers are involved in the care plan as appropriate and that they are aware of the patient's condition and the need for follow-up care. The coordinator should also ensure that the patient's care plan is reviewed and updated as needed, and that any potential barriers to care are identified and addressed. The coordinator should also ensure that the patient is aware of the importance of adhering to the prescribed medication",
+    "flags": [],
+    "call_script": {
+      "opening": "Hello, this is [Your Name] from [Practice Name]. I'm calling to follow up on your recent hospital stay.",
+      "questions": [
+        "How are you feeling since you've been home?",
+        "Have you been taking your medications as prescribed?",
+        "Have you had any problems with your medications or any new symptoms since you've been home?",
+        "Have you seen your doctor or any other healthcare provider since you've been home?"
+      ],
+      "medication_review": [
+        {
+          "name": "aspirin",
+          "change": "started",
+          "note": ""
+        },
+        {
+          "name": "atorvastatin",
+          "change": "started",
+          "note": ""
+        },
+        {
+          "name": "losartan potassium",
+          "change": "started",
+          "note": ""
+        },
+        {
+          "name": "metoprolol tartrate",
+          "change": "started",
+          "note": ""
+        },
+        {
+          "name": "clopidogrel",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "simvastatin",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "metoprolol succinate",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "nitroglycerin",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "insulin isophane human",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "tacrolimus",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "metformin hydrochloride",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "lisinopril",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "metoprolol tartrate",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "atorvastatin",
+          "change": "continued",
+          "note": ""
+        },
+        {
+          "name": "losartan potassium",
+          "change": "continued",
+          "note": ""
+        }
+      ],
+      "warning_signs": [
+        "chest pain or discomfort",
+        "shortness of breath",
+        "dizziness or fainting",
+        "swelling in the legs or feet",
+        "increased tiredness or confusion",
+        "nausea or vomiting",
+        "unusual bruising or bleeding",
+        "increased thirst or frequent urination"
+      ],
+      "scheduling": "We have a follow-up appointment scheduled with your doctor by January 3, 2017. If you have any questions or need to reschedule, please let me know as soon as possible."
+    },
+    "brief": {
+      "reason_for_admission": "Acute non-ST segment elevation myocardial infarction",
+      "key_conditions": [
+        "Anemia",
+        "Disorder of kidney due to diabetes mellitus",
+        "Diabetes mellitus type 2",
+        "Essential hypertension",
+        "Hyperglycemia",
+        "Hypertriglyceridemia",
+        "Metabolic syndrome X",
+        "Microalbuminuria due to type 2 diabetes mellitus",
+        "Proteinuria due to type 2 diabetes mellitus",
+        "Loss of teeth",
+        "Ischemic heart disease",
+        "Polyp of colon",
+        "Myocardial infarction"
+      ],
+      "medication_changes": [
+        {
+          "name": "aspirin",
+          "change": "started",
+          "note": ""
+        },
+        {
+          "name": "atorvastatin",
+          "change": "started",
+          "note": ""
+        },
+        {
+          "name": "losartan potassium",
+          "change": "started",
+          "note": ""
+        },
+        {
+          "name": "metoprolol tartrate",
+          "change": "started",
+          "note": ""
+        }
+      ],
+      "watch_for": [
+        "Medication adherence",
+        "Cardiac symptoms",
+        "Blood glucose control",
+        "Renal function",
+        "Proteinuria",
+        "Hypertension management"
+      ],
+      "risk_summary": "LACE score: 8 (high risk for readmission). Factors include short length of stay, acute admission, and multiple comorbidities. No recent ER visits."
+    },
+    "plan": {
+      "tier": "standard",
+      "visit_by": "2016-12-27",
+      "contact_by": "2016-12-22",
+      "tcm_code": "99495",
+      "tcm_visit_by": "2017-01-03",
+      "check_ins": [],
+      "reasons": [
+        "LACE 8 below the high-risk thresholds"
+      ]
+    }
+  }
+]

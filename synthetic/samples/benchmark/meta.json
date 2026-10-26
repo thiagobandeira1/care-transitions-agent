@@ -1,0 +1,9 @@
+{
+  "generator": "qwen3:14b",
+  "seed": 11,
+  "requested": 150,
+  "kept": 150,
+  "dropped": 0,
+  "train": 43,
+  "test": 107
+}
