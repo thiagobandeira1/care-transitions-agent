@@ -1,8 +1,9 @@
 # Progress: care-transitions-agent (Stage 4)
 
-_Last updated: 2026-10-26, ~9 AM, after the morning re-runs. Local commits only; nothing is pushed to GitHub
-(publishing needs Thiago's OK). Every number below is from synthetic data (Synthea and notes generated from it).
-None of it is MIMIC or MMC data._
+_Last updated: 2026-10-26, ~3:20 PM, after the MIMIC-IV-Note download and prep. Local commits only; nothing is
+pushed to GitHub (publishing waits for the MIMIC baselines). The M5 section reports MIMIC aggregates only (counts,
+rates, length quantiles). Every other number is from synthetic data (Synthea and notes generated from it). None of
+it is MMC data._
 
 ## Where things stand
 | Milestone | Status |
@@ -12,8 +13,8 @@ None of it is MIMIC or MMC data._
 | M2 LangGraph workflow, human review, SQLite tracking, daily check-ins | ✅ done |
 | M3 real local drafting + GPU vs CPU benchmark | ✅ done (below), re-measured after the prompt fix |
 | M4 public synthetic extraction benchmark | ✅ done: 150 notes (43 train / 107 test), rules vs zero-/few-shot 8b and 14b |
-| M5 MIMIC-IV-Note prep code + gold-annotation tooling | ✅ code done; runs once the download finishes |
-| M6 baselines on MIMIC (zero-/few-shot) | waits for the download and the gold set |
+| M5 MIMIC-IV-Note prep code + gold-annotation tooling | ✅ done: download verified, prep run, 200-note gold set exported |
+| M6 baselines on MIMIC (zero-/few-shot) | next: needs a command that scores a MIMIC split (silver labels now, gold later) |
 | M7 QLoRA fine-tune script + training environment | ✅ pipeline verified end to end (small model, synthetic); real run waits for MIMIC |
 | M8 GGUF/Ollama export | script written, not run (needs the M7 adapter) |
 | M9 review screen and demo | ✅ smoke-tested on 5 synthetic discharges (queue, drafts, approve) |
@@ -102,6 +103,30 @@ What this shows, and what it does not:
   The 150 notes were generated on CPU by accident (a model left loaded by the CPU benchmark was reused); the notes
   are the same as GPU output would be, and the benchmark now unloads CPU-run models.
 
+### M5: MIMIC-IV-Note prep (aggregates only)
+Download: `discharge.csv.gz` (1,139 MB) and `discharge_detail.csv.gz` pass `gzip -t` and match PhysioNet's
+SHA256SUMS.txt for MIMIC-IV-Note 2.2. Diagnosis codes come from MIMIC-IV 3.1 `hosp`. `mimic-prep` took 11.5 minutes
+and wrote train/validation/test parquet files to `MIMIC_WORK_DIR`, outside the repo.
+
+| | Notes | Patients |
+|---|---|---|
+| Train | 232,305 | 102,140 |
+| Validation | 33,068 | 14,591 |
+| Test | 66,420 | 29,183 |
+| **Total** | **331,793** | **145,914** |
+
+- Split by patient (70/10/20, seed 13), so no patient is in two splits.
+- Sections found in 88-100% of notes (hospital course is the lowest, 0.88). A "Pending" header is almost never
+  there (0.2%), so pending tests have to come from the text itself.
+- Model input (the extraction sections, about 4 characters per token): median about 1,050 tokens, 90th
+  percentile 1,880, 99th 2,940. Only 0.3% of inputs hit the 14,000-character cap. That fits Ollama's 8,192-token
+  context and a ~4k training length.
+- 99.9% of notes have a coded principal diagnosis, but only 36.9% are ICD-10 (the rest are ICD-9, before
+  October 2015). Diagnoses are therefore scored on the code's text, not the ICD-10 code.
+- Silver labels average 11.3 medication entries per note (continued medications included).
+- Gold set: 200 test notes exported to `MIMIC_WORK_DIR/gold/` with the model input and the silver labels as a
+  pre-fill; 50 are marked for a second annotator. `gold-check` reports progress and agreement.
+
 ### M7: QLoRA pipeline test
 `scripts/train_qlora.py --source synthetic --base Qwen/Qwen3-0.6B --max-train 40 --max-eval 10` in `.venv-train`
 (torch 2.11 + CUDA 12.8, TRL 1.16, PEFT 0.21, bitsandbytes 0.50): 4-bit NF4 base, LoRA rank 16 on all linear layers,
@@ -123,13 +148,10 @@ Product notes from reading the drafts (for the pilot, not bugs):
   changes is a workflow choice for Thiago.
 
 ## What needs you
-1. **MIMIC-IV-Note download:** `discharge_detail.csv.gz` is complete. `discharge.csv.gz` (about 1.1 GB) was at
-   about 680 MB at 8:45 AM, at ~20 KB/s with frequent stalls, so expect mid-to-late afternoon. The script in the
-   terminal resumes by itself after drops. When it finishes, I verify the SHA-256 against PhysioNet's list and run
-   `mimic-prep` (aggregates only).
-2. **Gold set** (paper 2's reference): once prep has run, `uv run python -m ctagent gold-export --n 200
-   --overlap 50`, then annotate following `docs/ANNOTATION.md`, ideally with an FIU co-author for the 50-note
-   overlap.
+1. **MIMIC-IV-Note download:** done and verified (M5 above).
+2. **Gold set** (paper 2's reference): exported. Annotate the 200 folders in `MIMIC_WORK_DIR/gold/` following
+   `docs/ANNOTATION.md`, ideally with an FIU co-author for the 50-note overlap. Run `uv run python -m ctagent
+   gold-check` to see progress and agreement.
 3. **Publishing:** the repo stays local until the MIMIC baselines (M6) are in (Thiago, 2026-10-26). Then I'll
    create the public GitHub repo. It contains no MIMIC data and nothing from MMC; the CI guard checks this.
 
