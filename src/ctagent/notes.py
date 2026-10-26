@@ -24,6 +24,7 @@ SECTIONS: dict[str, tuple[str, ...]] = {
     "condition": ("discharge condition",),
     "instructions": ("discharge instructions",),
     "followup": ("followup instructions", "follow-up instructions", "follow up instructions"),
+    "pending": ("pending at discharge", "pending results", "pending tests"),
 }
 # the sections the extractor reads (keeps inputs inside a ~4k-token budget)
 EXTRACTION_SECTIONS = (
@@ -32,14 +33,27 @@ EXTRACTION_SECTIONS = (
     "meds_discharge",
     "instructions",
     "followup",
+    "pending",
     "hospital_course",
 )
 
+# A header is a known name at line start, as plain text ("Discharge Diagnosis:", MIMIC) or
+# Markdown ("**Discharge Diagnosis**", "**Discharge Diagnosis:**", "## Discharge Diagnosis").
+# Without a colon it must stand alone on its line, so a sentence that starts with a header
+# name ("Hospital course was uneventful.") is not a header.
 _HEADER = re.compile(
-    r"^[ \t]*(" + "|".join(re.escape(h) for hs in SECTIONS.values() for h in hs) + r")[ \t]*:",
+    r"^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?[ \t]*("
+    + "|".join(re.escape(h) for hs in SECTIONS.values() for h in hs)
+    + r")(?:[ \t]*:[ \t]*(?:\*\*)?|[ \t]*\*\*[ \t]*:|[ \t]*(?:\*\*)?(?=[ \t]*$))",
     re.IGNORECASE | re.MULTILINE,
 )
 _CANON = {h: name for name, hs in SECTIONS.items() for h in hs}
+_RULE_LINE = re.compile(r"^[ \t]*(?:-{3,}|\*{3,})[ \t]*$", re.MULTILINE)
+
+
+def _clean_body(body: str) -> str:
+    """Drop Markdown rules and bold markers (MIMIC's ___ placeholders are left alone)."""
+    return _RULE_LINE.sub("", body).replace("**", "").strip()
 
 
 def split_sections(text: str) -> dict[str, str]:
@@ -51,7 +65,7 @@ def split_sections(text: str) -> dict[str, str]:
     ends = [m.start() for m in matches[1:]] + [len(text)]
     for m, end in zip(matches, ends, strict=True):
         name = _CANON[m.group(1).lower()]
-        out.setdefault(name, text[m.end() : end].strip())  # first occurrence wins
+        out.setdefault(name, _clean_body(text[m.end() : end]))  # first occurrence wins
     return out
 
 
@@ -140,30 +154,59 @@ _RED_FLAG_LEAD = re.compile(
     r"come back to the (?:emergency|ed|er)|go to the (?:emergency|ed|er))",
     re.IGNORECASE,
 )
+_DX_LABEL = re.compile(r"^(?:primary|principal|secondary)(?:\s+diagnos[ie]s)?\s*:\s*", re.I)
+_WITH = re.compile(
+    r"\bwith\s+(?:the\s+|your\s+|an?\s+|dr\.?\s+)?(.+?)"
+    r"(?=\s+(?:within|in|on|for|by|at|after|before)\b|[,.;(]|$)",
+    re.IGNORECASE,
+)
+
+
+def _dx_lines(section: str) -> list[str]:
+    """Diagnosis lines without bullets, numbering or Primary:/Secondary: labels."""
+    out = []
+    for raw in section.split("\n"):
+        line = re.sub(r"^\d+[.)]\s*", "", raw.strip(" -*•\t"))
+        line = _DX_LABEL.sub("", line).strip(" -*:")
+        if line:
+            out.append(line)
+    return out
+
+
+def _whom(item: str) -> str:
+    """'See/follow up with the X within N days' -> 'X'; other lines are kept whole."""
+    m = _WITH.search(item)
+    return m.group(1).strip() if m else item.strip()
 
 
 def silver_labels(
     text: str, principal: Diagnosis | None = None, secondary: list[Diagnosis] | None = None
 ) -> DischargeExtraction:
-    """Rule-based labels from one summary; diagnoses come from structured codes when available."""
+    """Rule-based labels from one summary; diagnoses come from structured codes when available.
+
+    Without codes, the first diagnosis line is the principal and the rest are secondary.
+    """
     sec = split_sections(text)
     follow = [
-        FollowUp(with_whom=line.strip()) for line in _LIST_ITEM.findall(sec.get("followup", ""))
+        FollowUp(with_whom=_whom(line)) for line in _LIST_ITEM.findall(sec.get("followup", ""))
     ]
     if not follow and sec.get("followup"):
-        follow = [FollowUp(with_whom=s.strip()) for s in sec["followup"].split("\n") if s.strip()]
+        follow = [FollowUp(with_whom=_whom(s)) for s in sec["followup"].split("\n") if s.strip()]
     pending = [
         m.group(0).strip()
         for m in _PENDING.finditer(sec.get("hospital_course", "") + "\n" + sec.get("results", ""))
     ]
+    pending += [line.strip() for line in _LIST_ITEM.findall(sec.get("pending", ""))]
     flags: list[str] = []
     instr = sec.get("instructions", "")
     lead = _RED_FLAG_LEAD.search(instr)
     if lead:
         flags = [line.strip() for line in _LIST_ITEM.findall(instr[lead.end() :])][:12]
-    if principal is None and sec.get("diagnosis"):
-        first = next((x for x in sec["diagnosis"].split("\n") if x.strip()), "").strip(" -*:")
-        principal = Diagnosis(text=first) if first else None
+    dx_lines = _dx_lines(sec.get("diagnosis", ""))
+    if principal is None and dx_lines:
+        principal = Diagnosis(text=dx_lines[0])
+        if secondary is None:
+            secondary = [Diagnosis(text=t) for t in dx_lines[1:]]
     return DischargeExtraction(
         principal_diagnosis=principal,
         secondary_diagnoses=secondary or [],

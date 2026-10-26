@@ -57,6 +57,49 @@ def test_split_sections_finds_known_headers_only() -> None:
     assert sec["disposition"] == "Home"
 
 
+MARKDOWN_NOTE = """**Discharge Summary**
+
+**Patient Name:** ___
+**Chief Complaint**
+Shortness of breath
+
+---
+
+## Brief Hospital Course
+Hospital course was uneventful. Diuresed with IV furosemide.
+
+---
+
+**Discharge Diagnosis:**
+Primary:
+1. Acute on chronic systolic heart failure
+Secondary:
+2. Chronic kidney disease
+
+**Pending at Discharge**:
+- Urine culture
+
+**Followup Instructions**
+- Primary care within **3 days**
+- Schedule a visit with the cardiologist in 2 weeks.
+"""
+
+
+def test_split_sections_reads_markdown_headers() -> None:
+    sec = split_sections(MARKDOWN_NOTE)
+    assert set(sec) == {"chief_complaint", "hospital_course", "diagnosis", "pending", "followup"}
+    # a sentence starting with a header name is body text, and rules/bold markers are dropped
+    assert sec["hospital_course"].startswith("Hospital course was uneventful.")
+    assert sec["chief_complaint"] == "Shortness of breath"
+    assert sec["followup"].startswith("- Primary care within 3 days\n")
+    lab = silver_labels(MARKDOWN_NOTE)
+    assert lab.principal_diagnosis is not None
+    assert lab.principal_diagnosis.text == "Acute on chronic systolic heart failure"
+    assert [d.text for d in lab.secondary_diagnoses] == ["Chronic kidney disease"]
+    assert lab.pending_tests == ["Urine culture"]
+    assert [f.with_whom for f in lab.follow_up] == ["Primary care within 3 days", "cardiologist"]
+
+
 def test_extraction_input_is_ordered_and_trimmed() -> None:
     text, trimmed = extraction_input(NOTE)
     assert text.startswith("DIAGNOSIS:") and "MEDS_DISCHARGE:" in text and not trimmed
