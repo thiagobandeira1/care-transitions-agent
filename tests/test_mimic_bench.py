@@ -14,13 +14,13 @@ from ctagent.notes import extraction_input
 from test_notes import NOTE
 
 
-def _label(pending: bool = False) -> DischargeExtraction:
+def _label(pending: bool = False, follow_up: bool = True) -> DischargeExtraction:
     return DischargeExtraction.model_validate(
         {
             "principal_diagnosis": {"text": "heart failure"},
             "secondary_diagnoses": [{"text": "atrial fibrillation"}],
             "medication_changes": [{"name": "furosemide", "change": "started"}],
-            "follow_up": [{"with_whom": "cardiology"}],
+            "follow_up": [{"with_whom": "cardiology"}] if follow_up else [],
             "pending_tests": ["blood culture"] if pending else [],
             "red_flags": ["chest pain"],
         }
@@ -35,11 +35,10 @@ def _answer(_: str) -> DischargeExtraction:
 def work(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     text, _ = extraction_input(NOTE)
     empty = DischargeExtraction(principal_diagnosis=None).model_dump_json()
+    # like MIMIC train silver: follow-ups are redacted, so none is labeled
+    train = [_label(pending=i == 4, follow_up=False).model_dump_json() for i in range(6)]
     pd.DataFrame(
-        {
-            "input": [text] * 6 + ["a note with nothing labeled"],
-            "silver": [_label(pending=i == 4).model_dump_json() for i in range(6)] + [empty],
-        }
+        {"input": [text] * 6 + ["a note with nothing labeled"], "silver": [*train, empty]}
     ).to_parquet(tmp_path / "train.parquet")
     pd.DataFrame(
         {
@@ -73,6 +72,11 @@ def test_few_shot_uses_labeled_train_notes_with_pending_tests_first(work: Path) 
     assert res["n"] == 2 and res["few_shot_examples"] == 3 and prompt.count("\nJSON:\n") == 3
     assert "blood culture" in prompt.split("EXAMPLE 2")[0]
     assert not (work / "repo").exists()  # a smoke test with --limit is not recorded
+
+
+def test_few_shot_without_enough_examples_fails(work: Path) -> None:
+    with pytest.raises(ValueError, match="found 6 few-shot examples, need 7"):
+        mb.run(work, "few", "qwen3:8b", k_shots=7, llm=FakeLLM())
 
 
 def test_failures_keep_only_the_error_type(work: Path) -> None:
