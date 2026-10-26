@@ -129,8 +129,8 @@ Product notes from reading the drafts (for the pilot, not bugs):
 2. **Gold set** (paper 2's reference): once prep has run, `uv run python -m ctagent gold-export --n 200
    --overlap 50`, then annotate following `docs/ANNOTATION.md`, ideally with an FIU co-author for the 50-note
    overlap.
-3. **Publishing:** the repo is local only. Say the word and I'll create the public GitHub repo. It contains no
-   MIMIC data and nothing from MMC; the CI guard checks this.
+3. **Publishing:** the repo stays local until the MIMIC baselines (M6) are in (Thiago, 2026-10-26). Then I'll
+   create the public GitHub repo. It contains no MIMIC data and nothing from MMC; the CI guard checks this.
 
 ## How to run
 ```
