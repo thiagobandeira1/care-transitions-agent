@@ -7,6 +7,7 @@ python -m ctagent make-benchmark --n 150           # synthetic notes with known 
 python -m ctagent extract-bench --mode zero|few|rules [--model qwen3:8b]
 python -m ctagent mimic-prep                       # local only; prints aggregates
 python -m ctagent gold-export --n 200 --overlap 50 / gold-check   # local annotation
+python -m ctagent mimic-bench --mode zero|few --model qwen3:8b [--ref gold] [--limit 5]
 python -m ctagent demo --n 10 [--workspace data/demo]   # morning batch for the review screen
 """
 
@@ -88,6 +89,7 @@ def main(argv: list[str] | None = None) -> None:
             "mimic-prep",
             "gold-export",
             "gold-check",
+            "mimic-bench",
             "demo",
         ],
     )
@@ -101,6 +103,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--db", type=Path, default=Path("data/tracking.sqlite"))
     p.add_argument("--mode", choices=["zero", "few", "rules"], default="zero")
     p.add_argument("--overlap", type=int, default=50)
+    p.add_argument("--ref", choices=["silver", "gold"], default="silver")
+    p.add_argument("--limit", type=int, default=None, help="smoke test: first N notes, not saved")
     p.add_argument("--workspace", type=Path, default=Path("data/demo"))
     p.add_argument("--date", type=date.fromisoformat, default=date.today())
     args = p.parse_args(argv)
@@ -142,6 +146,12 @@ def main(argv: list[str] | None = None) -> None:
         work = MimicPaths.from_env().work_dir
         res = export(work, args.n, args.overlap) if args.command == "gold-export" else check(work)
         print(json.dumps(res, indent=2, default=str))
+    elif args.command == "mimic-bench":
+        from .mimic import MimicPaths
+        from .mimic_bench import run
+
+        work = MimicPaths.from_env().work_dir
+        print(json.dumps(run(work, args.mode, args.model, args.ref, args.limit), indent=2))
     elif args.command == "extract-bench":
         from .benchmark import score
 
