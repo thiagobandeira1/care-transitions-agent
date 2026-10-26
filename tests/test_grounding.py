@@ -33,3 +33,26 @@ def test_invented_medication_still_flagged() -> None:
     assert grounding_violations(CTX, "", None, brief("warfarin")) == [
         "medication not in record: warfarin"
     ]
+
+
+def test_runaway_drafts_fail_validation() -> None:
+    import pytest
+    from pydantic import ValidationError
+
+    from ctagent.drafts import CallScript, PlanExplanation
+
+    ok = "High risk because of a long stay and two ER visits. See the patient by Friday."
+    assert PlanExplanation(summary=ok).summary == ok
+    loop = "The coordinator should also monitor the patient's adherence to medications. "
+    with pytest.raises(ValidationError, match="repeats a sentence"):
+        PlanExplanation(summary=ok + " " + loop * 2)
+    with pytest.raises(ValidationError, match="longer than 1000"):
+        PlanExplanation(summary="word " * 300)
+    with pytest.raises(ValidationError, match="repeated list item"):
+        CallScript(
+            opening="Hi",
+            questions=["How are you feeling?", "How are you feeling?"],
+            medication_review=[],
+            warning_signs=[],
+            scheduling="Friday",
+        )

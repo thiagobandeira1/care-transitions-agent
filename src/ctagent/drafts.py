@@ -5,8 +5,9 @@ medication or condition a draft names must exist in the patient's record as of d
 """
 
 import re
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field
 
 from .models import DischargeEvent, FollowUpPlan, MedChangeType, PatientContext, RiskScore
 from .synthea import base_name
@@ -18,30 +19,60 @@ SYSTEM = (
 )
 
 
+def _bounded(limit: int) -> AfterValidator:
+    """Reject runaway generations: too long, or a sentence repeated (a looping model).
+
+    A rejected draft fails validation, is retried once, then is flagged for a human (ADR 0002).
+    The check runs after decoding, so text is never truncated silently.
+    """
+
+    def check(text: str) -> str:
+        if len(text) > limit:
+            raise ValueError(f"longer than {limit} characters (runaway generation)")
+        parts = [_norm(x) for x in re.split(r"(?<=[.!?])\s+", text)]
+        sentences = [x for x in parts if len(x) > 20]
+        if len(sentences) != len(set(sentences)):
+            raise ValueError("repeats a sentence (runaway generation)")
+        return text
+
+    return AfterValidator(check)
+
+
+def _distinct(items: list[str]) -> list[str]:
+    if len({_norm(x) for x in items}) != len(items):
+        raise ValueError("repeated list item (runaway generation)")
+    return items
+
+
+Short = Annotated[str, _bounded(400)]
+Para = Annotated[str, _bounded(1000)]
+Items = Annotated[list[Short], AfterValidator(_distinct)]
+
+
 class PlanExplanation(BaseModel):
-    summary: str = Field(description="2-3 plain sentences: why this tier and what happens next")
+    summary: Para = Field(description="2-3 plain sentences: why this tier and what happens next")
 
 
 class MedLine(BaseModel):
     name: str = Field(description="Medication name exactly as in the record (generic name)")
     change: MedChangeType
-    note: str = Field(default="", description="What the patient or provider should know")
+    note: Short = Field(default="", description="What the patient or provider should know")
 
 
 class CallScript(BaseModel):
-    opening: str = Field(description="Greeting and purpose of the call, plain language")
-    questions: list[str] = Field(description="3-6 questions about symptoms, understanding, needs")
+    opening: Para = Field(description="Greeting and purpose of the call, plain language")
+    questions: Items = Field(description="3-6 questions about symptoms, understanding, needs")
     medication_review: list[MedLine] = Field(description="Only medications that changed")
-    warning_signs: list[str] = Field(description="Symptoms that should prompt a call or the ER")
-    scheduling: str = Field(description="The visit to offer, with the target date")
+    warning_signs: Items = Field(description="Symptoms that should prompt a call or the ER")
+    scheduling: Para = Field(description="The visit to offer, with the target date")
 
 
 class ProviderBrief(BaseModel):
-    reason_for_admission: str
-    key_conditions: list[str] = Field(description="Relevant chronic conditions, names from record")
+    reason_for_admission: Para
+    key_conditions: Items = Field(description="Relevant chronic conditions, names from record")
     medication_changes: list[MedLine]
-    watch_for: list[str] = Field(description="What to check at the follow-up visit")
-    risk_summary: str = Field(description="One sentence on readmission risk and its drivers")
+    watch_for: Items = Field(description="What to check at the follow-up visit")
+    risk_summary: Para = Field(description="One sentence on readmission risk and its drivers")
 
 
 def record_text(

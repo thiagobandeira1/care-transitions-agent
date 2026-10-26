@@ -17,7 +17,7 @@ from pydantic import ValidationError
 
 from ctagent.drafts import CallScript, ProviderBrief
 from ctagent.graph import ReviewDecision
-from ctagent.llm import OllamaLLM
+from ctagent.llm import drafting_llm
 from ctagent.models import DischargeEvent, PatientContext
 from ctagent.review import Workspace, decide, open_graph, pending, review_payload
 from ctagent.tracking import Tracker
@@ -29,7 +29,7 @@ def _no_new_discharges(event: DischargeEvent) -> PatientContext:
 
 @st.cache_resource
 def load(workspace: str, model: str) -> tuple[CompiledStateGraph[Any], Tracker]:
-    return open_graph(Workspace(Path(workspace)), OllamaLLM(model), _no_new_discharges)
+    return open_graph(Workspace(Path(workspace)), drafting_llm(model), _no_new_discharges)
 
 
 def show_script(s: dict[str, Any]) -> None:

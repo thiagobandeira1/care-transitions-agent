@@ -15,7 +15,7 @@ import pandas as pd
 from langgraph.checkpoint.memory import InMemorySaver
 
 from .graph import Deps, build_graph, start_discharge
-from .llm import OllamaLLM
+from .llm import drafting_llm
 from .models import DischargeEvent, Disposition, PatientContext
 from .synthea import SyntheaSource, build_cohort, patient_contexts
 from .tracking import Tracker
@@ -102,7 +102,7 @@ def run_bench(
     csv_dir: Path, model: str, n: int, cpu_only: bool, seed: int = 7, samples: int = 0
 ) -> dict[str, Any]:
     events, ctx = sample_discharges(csv_dir, n, seed)
-    llm = OllamaLLM(model, cpu_only=cpu_only)
+    llm = drafting_llm(model, cpu_only=cpu_only)
     tracker = Tracker(":memory:")
     graph = build_graph(
         Deps(llm=llm, contexts=lambda e: ctx[e.episode_id], tracker=tracker), InMemorySaver()

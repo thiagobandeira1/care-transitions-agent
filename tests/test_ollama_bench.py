@@ -21,6 +21,9 @@ class StubChat:
         self.kwargs = kwargs
         self.result: Any = PlanExplanation(summary="ok")
 
+    def model_copy(self, update: dict[str, Any]) -> "StubChat":
+        return StubChat(**{**self.kwargs, **update})
+
     def with_structured_output(self, schema: type[BaseModel], method: str) -> "StubChat":
         assert method == "json_schema"
         return self
@@ -70,6 +73,23 @@ def test_unload_asks_ollama_to_drop_the_model(monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.mark.usefixtures("stub")
+def test_drafting_samples_with_a_new_seed_per_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    seeds: list[Any] = []
+    monkeypatch.setattr(
+        StubChat,
+        "invoke",
+        lambda self, m: seeds.append(self.kwargs["seed"]) or PlanExplanation(summary="ok"),
+    )
+    m = llm_mod.drafting_llm("qwen3:14b", seed=7)
+    kw = m._chat.kwargs  # type: ignore[attr-defined]
+    assert (kw["temperature"], kw["top_p"], kw["top_k"]) == (0.7, 0.8, 20)  # Qwen3 non-thinking
+    m.generate(PlanExplanation, "s", "p")
+    m.generate(PlanExplanation, "s", "p")  # a retry gets a different sample
+    assert seeds == [8, 9]
+    assert OllamaLLM("qwen3:8b")._chat.kwargs["temperature"] == 0.0  # type: ignore[attr-defined]
+
+
+@pytest.mark.usefixtures("stub")
 def test_ollama_llm_wraps_parse_failures() -> None:
     m = OllamaLLM("qwen3:8b")
     try:
@@ -101,7 +121,7 @@ def test_bench_writes_aggregates_and_synthetic_samples(
         risk_summary="",
     )
     fake = FakeLLM(responses, name="qwen3:8b")
-    monkeypatch.setattr(bench, "OllamaLLM", lambda model, cpu_only: fake)
+    monkeypatch.setattr(bench, "drafting_llm", lambda model, cpu_only: fake)
     monkeypatch.setattr(bench, "REPO", tmp_path)
     monkeypatch.setattr(llm_mod, "OllamaLLM", None)
     result = bench.run_bench(fx.write(tmp_path / "csv"), "qwen3:8b", n=2, cpu_only=True, samples=1)

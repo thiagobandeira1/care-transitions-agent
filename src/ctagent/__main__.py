@@ -88,6 +88,7 @@ def main(argv: list[str] | None = None) -> None:
             "mimic-prep",
             "gold-export",
             "gold-check",
+            "demo",
         ],
     )
     p.add_argument(
@@ -125,12 +126,12 @@ def main(argv: list[str] | None = None) -> None:
         print(json.dumps(prepare(MimicPaths.from_env()), indent=2, default=str))
     elif args.command == "demo":
         from .bench import sample_discharges
-        from .llm import OllamaLLM
+        from .llm import drafting_llm
         from .review import Workspace, open_graph, pending, process
 
         events, ctx = sample_discharges(args.synthea, args.n, seed=29)
         graph, tracker = open_graph(
-            Workspace(args.workspace), OllamaLLM(args.model), lambda e: ctx[e.episode_id]
+            Workspace(args.workspace), drafting_llm(args.model), lambda e: ctx[e.episode_id]
         )
         done = process(graph, events)
         print(f"processed {done} discharges; pending review: {len(pending(tracker))}")

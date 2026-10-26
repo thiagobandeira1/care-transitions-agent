@@ -34,3 +34,20 @@ def test_cohort_command_prints_aggregates(
     out = capsys.readouterr().out
     assert "eligible index stays 3" in out and "tiers:" in out and "AUROC" in out
     assert "TEST" not in out
+
+
+def test_demo_command_queues_drafts_for_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import ctagent.llm as llm_mod
+    from ctagent.llm import FakeLLM
+    from test_graph import good
+
+    fx = SyntheaFixture().patient("A").patient("B").patient("ZZ")
+    fx.encounter("A", "inpatient", 3000, 3004)
+    fx.encounter("B", "inpatient", 3000, 3002)
+    fx.encounter("ZZ", "ambulatory", 3400, 3400.1)
+    monkeypatch.setattr(llm_mod, "drafting_llm", lambda model: FakeLLM(good(), name=model))
+    csv = str(fx.write(tmp_path / "csv"))
+    main(["demo", "--synthea", csv, "--n", "2", "--workspace", str(tmp_path / "demo")])
+    assert "processed 2 discharges; pending review: 2" in capsys.readouterr().out

@@ -57,6 +57,9 @@ class OllamaLLM:
         cpu_only: bool = False,
         num_ctx: int = 8192,
         temperature: float = 0.0,
+        top_p: float | None = None,
+        top_k: int | None = None,
+        seed: int | None = None,
         num_predict: int = 1500,
     ) -> None:
         assert_no_cloud_tracing()
@@ -65,6 +68,8 @@ class OllamaLLM:
 
         self.name = f"{model}{' (cpu)' if cpu_only else ''}"
         self._model, self._base_url = model, base_url
+        # with a seed, call k uses seed + k: a run is repeatable, and a retry samples a new answer
+        self._seed, self._calls = seed, 0
         # num_predict caps runaway generations (a model stuck repeating JSON would otherwise run
         # until the context fills); a capped output fails validation, retries once, then flags.
         self._chat = ChatOllama(
@@ -74,6 +79,8 @@ class OllamaLLM:
             num_ctx=num_ctx,
             num_predict=num_predict,
             reasoning=False,
+            top_p=top_p,
+            top_k=top_k,
             num_gpu=0 if cpu_only else None,
             keep_alive="10m",
         )
@@ -88,12 +95,18 @@ class OllamaLLM:
 
         ollama.Client(host=self._base_url).generate(model=self._model, keep_alive=0)
 
+    def _next_chat(self) -> Any:
+        if self._seed is None:
+            return self._chat
+        self._calls += 1
+        return self._chat.model_copy(update={"seed": self._seed + self._calls})
+
     def complete(self, system: str, prompt: str) -> str:
         """Free text (used only to write synthetic notes)."""
-        return str(self._chat.invoke([("system", system), ("human", prompt)]).content)
+        return str(self._next_chat().invoke([("system", system), ("human", prompt)]).content)
 
     def generate(self, schema: type[T], system: str, prompt: str) -> T:
-        runnable = self._chat.with_structured_output(schema, method="json_schema")
+        runnable = self._next_chat().with_structured_output(schema, method="json_schema")
         try:
             out = runnable.invoke([("system", system), ("human", prompt)])
         except (ValidationError, ValueError) as e:
@@ -101,6 +114,15 @@ class OllamaLLM:
         if not isinstance(out, schema):
             raise LLMOutputError(f"expected {schema.__name__}, got {type(out).__name__}")
         return out
+
+
+def drafting_llm(model: str, *, cpu_only: bool = False, seed: int = 7) -> OllamaLLM:
+    """Free-text drafting with Qwen3's non-thinking sampling (ADR 0007).
+
+    The Qwen3 model card warns against greedy decoding ("endless repetitions"); at temperature 0
+    most plan explanations looped until the token cap. Extraction stays greedy (short JSON).
+    """
+    return OllamaLLM(model, cpu_only=cpu_only, temperature=0.7, top_p=0.8, top_k=20, seed=seed)
 
 
 @dataclass
