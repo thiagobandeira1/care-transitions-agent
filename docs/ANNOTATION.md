@@ -26,6 +26,11 @@ tool, Claude included.
 
 ## Rules
 - Copy wording from the note where possible; don't infer what isn't written.
+- The prefill's diagnoses are the hospital's billing-code titles (ICD-9 or ICD-10), not the note's wording.
+  Replace them with what Discharge Diagnosis says.
+- MIMIC-IV-Note redacts the Followup Instructions section to `___`, so the prefill has no follow-ups. Record
+  follow-ups stated elsewhere in the input (discharge instructions, hospital course); leave the list empty if
+  there are none.
 - If a field has nothing, leave the list empty (or `principal_diagnosis` null).
 - Record annotation time per note (optional, `minutes` key) to report the effort.
 - Disagreements between A and B are resolved by discussion after agreement is measured. The resolved file

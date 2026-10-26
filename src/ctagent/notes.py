@@ -179,6 +179,11 @@ def _whom(item: str) -> str:
     return m.group(1).strip() if m else item.strip()
 
 
+def _deidentified(item: str) -> bool:
+    """Only ___ placeholders. MIMIC-IV-Note redacts its Followup Instructions section this way."""
+    return not re.sub(r"[_\s]", "", item)
+
+
 def silver_labels(
     text: str, principal: Diagnosis | None = None, secondary: list[Diagnosis] | None = None
 ) -> DischargeExtraction:
@@ -192,6 +197,7 @@ def silver_labels(
     ]
     if not follow and sec.get("followup"):
         follow = [FollowUp(with_whom=_whom(s)) for s in sec["followup"].split("\n") if s.strip()]
+    follow = [f for f in follow if not _deidentified(f.with_whom)]
     pending = [
         m.group(0).strip()
         for m in _PENDING.finditer(sec.get("hospital_course", "") + "\n" + sec.get("results", ""))

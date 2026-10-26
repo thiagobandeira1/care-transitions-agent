@@ -146,3 +146,8 @@ def test_structured_diagnoses_override_text_and_free_text_followup() -> None:
     assert lab.principal_diagnosis == Diagnosis(text="Heart failure", icd10="I5023")
     assert [f.with_whom for f in lab.follow_up] == ["See PCP Monday"]
     assert silver_labels("nothing").principal_diagnosis is None
+
+
+def test_redacted_followup_section_is_no_followup() -> None:
+    note = NOTE.replace("1. Primary care within 7 days\n2. Cardiology in 2 weeks", "___")
+    assert silver_labels(note).follow_up == []
