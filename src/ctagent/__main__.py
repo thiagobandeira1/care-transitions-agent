@@ -5,6 +5,7 @@ python -m ctagent bench --model qwen3:14b [--cpu]  # drafting latency + groundin
 python -m ctagent daily --date 2024-03-22          # check-ins due today (tracking DB)
 python -m ctagent make-benchmark --n 150           # synthetic notes with known answers
 python -m ctagent extract-bench --mode zero|few|rules [--model qwen3:8b]
+python -m ctagent mimic-prep                       # local only; prints aggregates
 """
 
 import argparse
@@ -15,6 +16,7 @@ from datetime import date
 from pathlib import Path
 
 import pandas as pd
+from dotenv import load_dotenv
 
 from .metrics import auroc
 from .models import DischargeEvent, Disposition
@@ -74,7 +76,8 @@ def cmd_daily(db: Path, today: date) -> None:
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="ctagent")
     p.add_argument(
-        "command", choices=["cohort", "bench", "daily", "make-benchmark", "extract-bench"]
+        "command",
+        choices=["cohort", "bench", "daily", "make-benchmark", "extract-bench", "mimic-prep"],
     )
     p.add_argument(
         "--synthea", type=Path, default=Path(os.environ.get("SYNTHEA_CSV_DIR", DEFAULT_SYNTHEA))
@@ -87,6 +90,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--mode", choices=["zero", "few", "rules"], default="zero")
     p.add_argument("--date", type=date.fromisoformat, default=date.today())
     args = p.parse_args(argv)
+    load_dotenv()
     if args.command == "cohort":
         cmd_cohort(args.synthea)
     elif args.command == "bench":
@@ -102,6 +106,10 @@ def main(argv: list[str] | None = None) -> None:
         from .benchmark import build
 
         print(json.dumps(build(args.synthea, args.n, args.model), indent=2))
+    elif args.command == "mimic-prep":
+        from .mimic import MimicPaths, prepare
+
+        print(json.dumps(prepare(MimicPaths.from_env()), indent=2, default=str))
     elif args.command == "extract-bench":
         from .benchmark import score
 
