@@ -1,9 +1,8 @@
 # Progress: care-transitions-agent (Stage 4)
 
-_Last updated: 2026-10-26, ~3:20 PM, after the MIMIC-IV-Note download and prep. Local commits only; nothing is
-pushed to GitHub (publishing waits for the MIMIC baselines). The M5 section reports MIMIC aggregates only (counts,
-rates, length quantiles). Every other number is from synthetic data (Synthea and notes generated from it). None of
-it is MMC data._
+_Last updated: 2026-10-26, ~8:40 PM, after the MIMIC baselines (M6). Local commits only; nothing is pushed to
+GitHub yet. The M5 and M6 sections report MIMIC aggregates only (counts, rates, length quantiles, metrics). Every
+other number is from synthetic data (Synthea and notes generated from it). None of it is MMC data._
 
 ## Where things stand
 | Milestone | Status |
@@ -14,7 +13,7 @@ it is MMC data._
 | M3 real local drafting + GPU vs CPU benchmark | ✅ done (below), re-measured after the prompt fix |
 | M4 public synthetic extraction benchmark | ✅ done: 150 notes (43 train / 107 test), rules vs zero-/few-shot 8b and 14b |
 | M5 MIMIC-IV-Note prep code + gold-annotation tooling | ✅ done: download verified, prep run, 200-note gold set exported |
-| M6 baselines on MIMIC (zero-/few-shot) | next: needs a command that scores a MIMIC split (silver labels now, gold later) |
+| M6 baselines on MIMIC (zero-/few-shot) | ✅ done against silver labels (below); the gold-label run waits for annotation |
 | M7 QLoRA fine-tune script + training environment | ✅ pipeline verified end to end (small model, synthetic); real run waits for MIMIC |
 | M8 GGUF/Ollama export | script written, not run (needs the M7 adapter) |
 | M9 review screen and demo | ✅ smoke-tested on 5 synthetic discharges (queue, drafts, approve) |
@@ -127,6 +126,68 @@ and wrote train/validation/test parquet files to `MIMIC_WORK_DIR`, outside the r
 - Gold set: 200 test notes exported to `MIMIC_WORK_DIR/gold/` with the model input and the silver labels as a
   pre-fill; 50 are marked for a second annotator. `gold-check` reports progress and agreement.
 
+### M6: zero- and few-shot baselines on MIMIC (200 gold-set notes, silver labels)
+Same extractor and prompt as M4 (field guidance, greedy decoding), with a 16,384-token context and a
+3,000-token answer cap. The notes are the 200 gold-set notes from the test split. Few-shot examples are 3 short
+train notes, one with pending tests. The gold set is not annotated yet, so scoring is against the rule-based
+silver labels. **These numbers are preliminary:** silver labels are a weak reference for every field except
+medications (below). `mimic-bench --ref gold` reruns the same comparison once the gold set exists.
+
+| Mode | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | Med change type acc. | s / note (GPU) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| qwen3:8b zero-shot | 0.080 | 0.071 | 0.621 | 0.000 | 0.048 | 0.066 | **0.378** (0.342-0.414) | 0.296 | 0.72 | 7.2* |
+| qwen3:14b zero-shot | 0.075 | 0.082 | 0.670 | 0.000 | 0.043 | 0.069 | **0.403** (0.375-0.432) | 0.315 | 0.76 | 12.3 |
+| qwen3:8b few-shot (3) | 0.065 | 0.112 | 0.707 | 0.000 | 0.090 | 0.084 | **0.434** (0.404-0.464) | 0.339 | 0.78 | 9.1 |
+| qwen3:14b few-shot (3) | 0.085 | 0.123 | 0.716 | 0.000 | 0.069 | 0.112 | **0.444** (0.417-0.470) | 0.343 | 0.79 | 14.7 |
+
+One schema failure (8b zero-shot, after the retry); none in the other runs. \*Mean over notes 91-200: the first
+90 shared the GPU with a stale run that was stopped (the full-run mean, 11.7 s, is in the results file).
+
+What this shows:
+- **Medications are the one field the silver labels measure fairly.** Silver medication changes are a diff of
+  the admission and discharge lists, which is the task the model does. Real notes are much harder than the
+  synthetic ones: F1 0.62-0.72 here vs 0.95-0.98 in M4, and change-type accuracy 0.72-0.79 vs 0.99-1.00. Three
+  examples help both models (8b 0.621 → 0.707, CIs 0.570-0.669 vs 0.662-0.750). This is the field with the most
+  room for fine-tuning and the clearest reference.
+- **8b vs 14b:** 14b is ahead in every mode, but every CI overlaps. 8b few-shot is within the CI of 14b few-shot
+  at 9.1 vs 14.7 s per note, which supports fine-tuning the 8b model.
+- **Most of the low scores in other fields reflect the silver labels, not the models:**
+  - Diagnoses: silver holds the hospital's billing-code titles (ICD-9 or ICD-10). The models copy the wording in
+    Discharge Diagnosis. Billing codes also list more conditions: 6.8 secondary diagnoses per note vs 2.7-4.0
+    from the models.
+  - Follow-up: MIMIC redacts Followup Instructions to `___`, so silver has none. The models find about one
+    follow-up per note elsewhere in the input, and every one counts as a false positive.
+  - Red flags: the rules only take a list after phrases like "call your doctor", and 92.5% of notes get none.
+    The models list 2.9-3.8 per note.
+  - Pending tests: silver takes any sentence containing "pending" (0.41 per note). The models give 0.46-0.83.
+- **Few-shot examples teach the silver conventions as well as the task.** None of the 3 examples has a
+  follow-up (they are redacted). With them, the share of notes with no follow-up rises from 10% to 41% (14b) and
+  from 47% to 55% (8b), and pending tests fall to silver's level (0.46-0.47 per note). Part of the few-shot gain
+  against silver may come from matching conventions; the gold set will tell.
+
+Two bugs were found and fixed before these numbers (both with tests):
+1. Silver follow-ups were `___` placeholders, because MIMIC redacts Followup Instructions (198 of 200 gold-set
+   notes). They are now dropped, prep and the gold export were rerun, and `docs/ANNOTATION.md` tells annotators
+   to record follow-ups stated elsewhere.
+2. After that fix no train note had a silver follow-up. The few-shot picker required one, so the first few-shot
+   runs went ahead with 0 examples (14b scored the same as zero-shot). The picker no longer requires a
+   follow-up, and a few-shot run with fewer than 3 examples now stops with an error.
+
+**Decision before M7 (the real fine-tune).** Training on these silver labels as they are would teach the model
+the silver conventions: billing-code titles for diagnoses, no follow-ups, and the rules' narrow red flags and
+pending tests. It would score well against silver and worse against gold. Options:
+- **A. Train on silver as is.** Simplest. The paper reports silver and gold scores side by side, and the gold
+  scores for diagnoses, follow-up and red flags will be limited by the labels.
+- **B. Align silver with the gold guideline first (recommended).** Take diagnoses from the note's Discharge
+  Diagnosis section (the rule already exists for notes without codes) instead of billing-code titles. Keep
+  medication changes as they are. Follow-up, red flags and pending tests stay rule-based and weak, and the paper
+  shows per-field gold results so this is visible. About an hour of work: change prep, rerun it (12 minutes),
+  re-export the gold set and rescore the saved predictions against the new silver labels (no new GPU runs).
+- **C. Teacher labels.** Use qwen3:14b few-shot output as the labels for follow-up, red flags and pending tests
+  (local, so the DUA allows it). Likely the best gold scores, but it is distillation: the comparison becomes
+  "fine-tuned 8b vs its 14b teacher", and the teacher's errors become training targets. Worth discussing with
+  the FIU co-authors before choosing it.
+
 ### M7: QLoRA pipeline test
 `scripts/train_qlora.py --source synthetic --base Qwen/Qwen3-0.6B --max-train 40 --max-eval 10` in `.venv-train`
 (torch 2.11 + CUDA 12.8, TRL 1.16, PEFT 0.21, bitsandbytes 0.50): 4-bit NF4 base, LoRA rank 16 on all linear layers,
@@ -152,8 +213,10 @@ Product notes from reading the drafts (for the pilot, not bugs):
 2. **Gold set** (paper 2's reference): exported. Annotate the 200 folders in `MIMIC_WORK_DIR/gold/` following
    `docs/ANNOTATION.md`, ideally with an FIU co-author for the 50-note overlap. Run `uv run python -m ctagent
    gold-check` to see progress and agreement.
-3. **Publishing:** the repo stays local until the MIMIC baselines (M6) are in (Thiago, 2026-10-26). Then I'll
-   create the public GitHub repo. It contains no MIMIC data and nothing from MMC; the CI guard checks this.
+3. **Publishing:** the repo was to stay local until the MIMIC baselines (M6) were in (Thiago, 2026-10-26). They
+   are in. On your OK I'll create the public GitHub repo. It contains no MIMIC data and nothing from MMC (only
+   aggregate metrics in `evals/results/`); the CI guard checks this.
+4. **Silver labels for M7:** choose A, B or C in the M6 section above. I recommend B.
 
 ## How to run
 ```
@@ -166,4 +229,6 @@ uv run python -m ctagent extract-bench --mode few --model qwen3:8b
 uv run python -m ctagent demo --n 5                               # morning batch into data/demo
 uv run streamlit run app/review_app.py -- --workspace data/demo   # review screen
 uv run python -m ctagent mimic-prep                               # after the MIMIC download
+uv run python -m ctagent gold-export --n 200 --overlap 50
+uv run python -m ctagent mimic-bench --mode few --model qwen3:8b   # add --ref gold once annotated
 ```
