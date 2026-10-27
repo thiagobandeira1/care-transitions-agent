@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+import ctagent.mimic as mimic
 from ctagent.mimic import MimicPaths, prepare, split_patients
 from ctagent.privacy import PrivacyError
 from test_notes import NOTE
@@ -58,8 +59,14 @@ def test_split_is_by_patient_and_reproducible() -> None:
     assert sorted(set(a.values())) == ["test", "train", "validation"]
 
 
-def test_prepare_writes_splits_and_reports_aggregates_only(paths: MimicPaths) -> None:
+def test_prepare_writes_splits_and_reports_aggregates_only(
+    paths: MimicPaths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reads: list[Path] = []
+    real = mimic.coded_principal
+    monkeypatch.setattr(mimic, "coded_principal", lambda d: reads.append(d) or real(d))
     stats = prepare(paths)
+    assert len(reads) == 1  # the 6-million-row code file is read once, not once per note
     assert stats["notes"] == 20 and stats["patients"] == 10
     assert stats["section_presence"]["meds_discharge"] == 1.0
     assert stats["notes_with_coded_principal_dx"] == 0.1  # 2 of 20 admissions coded

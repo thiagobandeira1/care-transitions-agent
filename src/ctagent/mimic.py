@@ -65,7 +65,8 @@ def prepare(paths: MimicPaths, seed: int = 13, limit: int | None = None) -> dict
         nrows=limit,
     )
     notes["split"] = notes["subject_id"].map(split_patients(notes["subject_id"], seed))
-    coded = [coded_principal(paths.hosp_dir).get(int(str(h))) for h in notes["hadm_id"]]
+    versions = coded_principal(paths.hosp_dir)
+    coded = [versions.get(int(str(h))) for h in notes["hadm_id"]]
 
     rows, section_hits = [], dict.fromkeys(SECTIONS, 0)
     lengths, trimmed = [], 0
