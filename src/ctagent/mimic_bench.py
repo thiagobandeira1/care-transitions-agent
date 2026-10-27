@@ -9,7 +9,6 @@ only the error type. The rules baseline against gold is `gold-check`'s silver_vs
 """
 
 import json
-import time
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +62,14 @@ def pick_shots(work_dir: Path, k: int, seed: int) -> list[Example]:
     return (with_pending[:1] + [ex for ex in cands if not ex.label.pending_tests])[:k]
 
 
+def saved_predictions(path: Path) -> dict[str, dict[str, Any]]:
+    """folder -> saved prediction row from a full run."""
+    if not path.exists():
+        raise ValueError(f"no saved predictions at {path.name}; run without --rescore first")
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    return {r["folder"]: r for r in rows}
+
+
 def run(
     work_dir: Path,
     mode: str,
@@ -72,43 +79,62 @@ def run(
     k_shots: int = 3,
     seed: int = 5,
     llm: StructuredLLM | None = None,
+    rescore: bool = False,
 ) -> dict[str, Any]:
-    """mode: 'zero' or 'few'. A run with `limit` is a smoke test and is not recorded."""
+    """mode: 'zero' or 'few'. A run with `limit` is a smoke test and is not recorded.
+
+    `rescore` scores the predictions saved by the full silver-label run against the current labels
+    without calling the model: after the silver labels change, or on the gold set once annotated.
+    """
     if mode not in ("zero", "few"):
         raise ValueError("MIMIC modes are zero and few; the rules baseline is gold-check")
     notes = gold_notes(work_dir, ref)[:limit]
-    shots = pick_shots(work_dir, k_shots, seed) if mode == "few" else []
-    if mode == "few" and len(shots) < k_shots:
-        raise ValueError(f"found {len(shots)} few-shot examples, need {k_shots}")
-    ext = Extractor(llm or OllamaLLM(model, num_ctx=16384, num_predict=NUM_PREDICT), shots)
     preds_dir = assert_outside_repo(work_dir / "preds")
-    preds_dir.mkdir(parents=True, exist_ok=True)
     tag = f"{model.replace(':', '-')}_{mode}"
 
-    t0 = time.perf_counter()
+    rows: list[dict[str, Any]] = []
+    if rescore:
+        saved = saved_predictions(preds_dir / f"silver_{tag}.jsonl")
+        missing = [folder for folder, _, _ in notes if folder not in saved]
+        if missing:
+            raise ValueError(f"{len(missing)} notes have no saved prediction")
+        rows = [saved[folder] for folder, _, _ in notes]
+        n_shots = k_shots if mode == "few" else 0  # a full few-shot run checks it had k
+    else:
+        shots = pick_shots(work_dir, k_shots, seed) if mode == "few" else []
+        if mode == "few" and len(shots) < k_shots:
+            raise ValueError(f"found {len(shots)} few-shot examples, need {k_shots}")
+        ext = Extractor(llm or OllamaLLM(model, num_ctx=16384, num_predict=NUM_PREDICT), shots)
+        preds_dir.mkdir(parents=True, exist_ok=True)
+        with (preds_dir / f"{ref}_{tag}.jsonl").open("w", encoding="utf-8") as fh:
+            for i, (folder, text, _) in enumerate(notes, 1):
+                r = ext.run(text)
+                row = {"folder": folder, "attempts": r.attempts, "seconds": r.seconds}
+                row |= {"pred": r.value.model_dump() if r.value else None, "error": r.error}
+                fh.write(json.dumps(row) + "\n")
+                rows.append(row)
+                print(f"  {mode} {i}/{len(notes)}", flush=True)
+        n_shots = len(shots)
+
     failures: dict[str, int] = {}
     pairs: list[tuple[DischargeExtraction | None, DischargeExtraction]] = []
-    with (preds_dir / f"{ref}_{tag}.jsonl").open("w", encoding="utf-8") as fh:
-        for i, (folder, text, label) in enumerate(notes, 1):
-            r = ext.run(text)
-            if r.value is None:
-                kind = r.error.split(":", 1)[0]
-                failures[kind] = failures.get(kind, 0) + 1
-            row = {"folder": folder, "attempts": r.attempts, "seconds": r.seconds}
-            row |= {"pred": r.value.model_dump() if r.value else None, "error": r.error}
-            fh.write(json.dumps(row) + "\n")
-            pairs.append((r.value, label))
-            print(f"  {mode} {i}/{len(notes)}", flush=True)
+    for row, (_, _, label) in zip(rows, notes, strict=True):
+        if row["pred"] is None:
+            kind = str(row["error"]).split(":", 1)[0]
+            failures[kind] = failures.get(kind, 0) + 1
+        pred = DischargeExtraction.model_validate(row["pred"]) if row["pred"] else None
+        pairs.append((pred, label))
 
     result = {
         "benchmark": f"MIMIC-IV-Note gold-set notes, {ref} labels",
         "mode": mode,
         "model": model,
         "n": len(notes),
-        "few_shot_examples": len(shots),
+        "few_shot_examples": n_shots,
+        "rescored": rescore,
         "schema_failures": sum(failures.values()),
         "failure_types": failures,
-        "seconds_per_note": (time.perf_counter() - t0) / max(len(notes), 1),
+        "seconds_per_note": sum(r["seconds"] for r in rows) / max(len(rows), 1),
         **evaluate(pairs).summary(),
         "relaxed_f1_ci95": bootstrap(pairs) if pairs else {},
     }

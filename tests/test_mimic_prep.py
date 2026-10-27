@@ -48,16 +48,6 @@ def paths(tmp_path: Path) -> MimicPaths:
             }
         ),
     )
-    write_gz(
-        hosp_dir / "d_icd_diagnoses.csv.gz",
-        pd.DataFrame(
-            {
-                "icd_code": ["I5023", "N183", "4280"],
-                "icd_version": [10, 10, 9],
-                "long_title": ["Acute on chronic systolic heart failure", "CKD stage 3", "CHF NOS"],
-            }
-        ),
-    )
     return MimicPaths(note_dir, hosp_dir, tmp_path / "work")
 
 
@@ -74,6 +64,8 @@ def test_prepare_writes_splits_and_reports_aggregates_only(paths: MimicPaths) ->
     assert stats["section_presence"]["meds_discharge"] == 1.0
     assert stats["notes_with_coded_principal_dx"] == 0.1  # 2 of 20 admissions coded
     assert stats["notes_with_icd10_principal"] == 0.05
+    assert stats["silver_principal_dx_from_note"] == 1.0
+    assert stats["silver_secondary_dx_per_note"] == 1.0
     assert SENTINEL not in json.dumps(stats)  # no note text in what gets printed
     frames = {
         s: pd.read_parquet(paths.work_dir / f"{s}.parquet") for s in ("train", "validation", "test")
@@ -81,8 +73,12 @@ def test_prepare_writes_splits_and_reports_aggregates_only(paths: MimicPaths) ->
     assert sum(len(f) for f in frames.values()) == 20
     subjects = [set(f["subject_id"]) for f in frames.values()]
     assert not (subjects[0] & subjects[1]) and not (subjects[0] & subjects[2])
-    coded = pd.concat(frames.values()).set_index("hadm_id").loc[1000, "silver"]
-    assert json.loads(coded)["principal_diagnosis"]["icd10"] == "I5023"
+    # diagnoses come from the note's wording, even where billing codes exist
+    coded = json.loads(pd.concat(frames.values()).set_index("hadm_id").loc[1000, "silver"])
+    assert coded["principal_diagnosis"] == {
+        "text": "Acute on chronic systolic heart failure",
+        "icd10": None,
+    }
 
 
 def test_from_env_refuses_paths_inside_repo(monkeypatch: pytest.MonkeyPatch) -> None:

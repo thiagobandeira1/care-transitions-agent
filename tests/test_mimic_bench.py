@@ -98,6 +98,28 @@ def test_gold_reference_uses_valid_annotations_only(work: Path) -> None:
     assert res["n"] == 1 and res["benchmark"].endswith("gold labels")
 
 
+def test_rescore_scores_saved_predictions_against_current_labels(work: Path) -> None:
+    first = mb.run(work, "few", "qwen3:8b", llm=FakeLLM({"DischargeExtraction": _answer}))
+    no_model = FakeLLM()  # any model call would fail
+    again = mb.run(work, "few", "qwen3:8b", llm=no_model, rescore=True)
+    assert again["rescored"] and not no_model.calls
+    assert again["relaxed"] == first["relaxed"] and again["few_shot_examples"] == 3
+    # the gold set reuses the silver run's predictions for the annotated notes
+    folder = sorted((work / "gold").iterdir())[0]
+    (folder / "gold.json").write_text(_label(follow_up=False).model_dump_json())
+    gold = mb.run(work, "few", "qwen3:8b", ref="gold", llm=no_model, rescore=True)
+    assert gold["n"] == 1 and gold["relaxed"]["follow_up"]["precision"] == 0.0
+
+
+def test_rescore_needs_a_full_run_first(work: Path) -> None:
+    with pytest.raises(ValueError, match="run without --rescore"):
+        mb.run(work, "zero", "qwen3:14b", llm=FakeLLM(), rescore=True)
+    (work / "preds").mkdir()
+    (work / "preds" / "silver_qwen3-14b_zero.jsonl").write_text("")
+    with pytest.raises(ValueError, match="4 notes have no saved prediction"):
+        mb.run(work, "zero", "qwen3:14b", llm=FakeLLM(), rescore=True)
+
+
 def test_rules_mode_points_to_gold_check(work: Path) -> None:
     with pytest.raises(ValueError, match="gold-check"):
         mb.run(work, "rules", "qwen3:8b", llm=FakeLLM())

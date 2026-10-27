@@ -155,6 +155,13 @@ _RED_FLAG_LEAD = re.compile(
     re.IGNORECASE,
 )
 _DX_LABEL = re.compile(r"^(?:primary|principal|secondary)(?:\s+diagnos[ie]s)?\s*:\s*", re.I)
+# a heading line without a colon ("PRIMARY DIAGNOSIS", "Chronic issues"), never a diagnosis
+_DX_HEADING = re.compile(
+    r"^(?:(?:primary|principal|secondary|final|discharge|additional|other|active|chronic|acute|"
+    r"resolved|inactive|medical|stable|hospital)\s*)*(?:diagnos[ie]s|dx|issues?|problems?|"
+    r"conditions?)?$",
+    re.I,
+)
 _WITH = re.compile(
     r"\bwith\s+(?:the\s+|your\s+|an?\s+|dr\.?\s+)?(.+?)"
     r"(?=\s+(?:within|in|on|for|by|at|after|before)\b|[,.;(]|$)",
@@ -163,12 +170,16 @@ _WITH = re.compile(
 
 
 def _dx_lines(section: str) -> list[str]:
-    """Diagnosis lines without bullets, numbering or Primary:/Secondary: labels."""
+    """Diagnosis lines without bullets, numbering or Primary:/Secondary: labels.
+
+    Drops headings ("Chronic issues", "Active:") and lines that are only ___ placeholders.
+    """
     out = []
     for raw in section.split("\n"):
         line = re.sub(r"^\d+[.)]\s*", "", raw.strip(" -*•\t"))
+        heading = line.endswith(":")
         line = _DX_LABEL.sub("", line).strip(" -*:")
-        if line:
+        if line and not heading and not _DX_HEADING.match(line) and not _deidentified(line):
             out.append(line)
     return out
 

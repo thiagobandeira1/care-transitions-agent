@@ -148,6 +148,22 @@ def test_structured_diagnoses_override_text_and_free_text_followup() -> None:
     assert silver_labels("nothing").principal_diagnosis is None
 
 
+def test_diagnosis_headings_and_placeholders_are_not_diagnoses() -> None:
+    section = """PRIMARY DIAGNOSIS
+___
+Acute on chronic systolic heart failure
+Secondary diagnoses:
+Chronic issues
+Active:
+- Chronic kidney disease
+Secondary: Stable angina"""
+    note = NOTE.replace("Acute on chronic systolic heart failure\nChronic kidney disease", section)
+    lab = silver_labels(note)
+    assert lab.principal_diagnosis is not None
+    assert lab.principal_diagnosis.text == "Acute on chronic systolic heart failure"
+    assert [d.text for d in lab.secondary_diagnoses] == ["Chronic kidney disease", "Stable angina"]
+
+
 def test_redacted_followup_section_is_no_followup() -> None:
     note = NOTE.replace("1. Primary care within 7 days\n2. Cardiology in 2 weeks", "___")
     assert silver_labels(note).follow_up == []

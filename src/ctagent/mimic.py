@@ -4,6 +4,10 @@ Reads discharge summaries and hospital diagnosis codes from directories OUTSIDE 
 splits by patient, builds extraction inputs and silver labels, and writes them to a local work
 directory, also outside the repository. It prints aggregates only (counts, rates, length
 quantiles) and never prints note text, header text, or identifiers. Claude reads only that output.
+
+Silver diagnoses come from the note's Discharge Diagnosis section, the convention the gold set
+follows (docs/ANNOTATION.md). Billing codes are only counted: their titles are not the note's
+wording, so a model trained on them would learn to write billing titles.
 """
 
 import json
@@ -15,12 +19,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .extraction import Diagnosis
 from .notes import SECTIONS, extraction_input, silver_labels, split_sections
 from .privacy import assert_outside_repo
 
 SPLITS = (("train", 0.7), ("validation", 0.1), ("test", 0.2))
-MAX_SECONDARY = 8
 
 
 @dataclass(frozen=True)
@@ -47,35 +49,13 @@ def split_patients(subject_ids: "pd.Series[Any]", seed: int) -> dict[Any, str]:
     return out
 
 
-def diagnoses(hosp_dir: Path) -> pd.DataFrame:
+def coded_principal(hosp_dir: Path) -> dict[int, int]:
+    """hadm_id -> ICD version (9 or 10) of the admission's first billing code (for the stats)."""
     dx = pd.read_csv(
-        hosp_dir / "diagnoses_icd.csv.gz", usecols=["hadm_id", "seq_num", "icd_code", "icd_version"]
+        hosp_dir / "diagnoses_icd.csv.gz", usecols=["hadm_id", "seq_num", "icd_version"]
     )
-    titles = pd.read_csv(
-        hosp_dir / "d_icd_diagnoses.csv.gz", usecols=["icd_code", "icd_version", "long_title"]
-    )
-    return dx.merge(titles, on=["icd_code", "icd_version"], how="left").sort_values(
-        ["hadm_id", "seq_num"]
-    )
-
-
-def _dx_lists(dx: pd.DataFrame) -> dict[int, tuple[Diagnosis | None, list[Diagnosis]]]:
-    out: dict[int, tuple[Diagnosis | None, list[Diagnosis]]] = {}
-    for hadm, g in dx.groupby("hadm_id"):
-        items = [
-            Diagnosis(text=str(t), icd10=str(c) if v == 10 else None)
-            for t, c, v in zip(
-                g["long_title"].fillna(""), g["icd_code"], g["icd_version"], strict=True
-            )
-        ]
-        out[int(str(hadm))] = (items[0] if items else None, items[1 : 1 + MAX_SECONDARY])
-    return out
-
-
-def _principal(
-    dx: dict[int, tuple[Diagnosis | None, list[Diagnosis]]], hadm: object
-) -> Diagnosis | None:
-    return dx.get(int(str(hadm)), (None, []))[0]
+    first = dx.sort_values(["hadm_id", "seq_num"]).groupby("hadm_id")["icd_version"].first()
+    return {int(str(h)): int(v) for h, v in first.items()}
 
 
 def prepare(paths: MimicPaths, seed: int = 13, limit: int | None = None) -> dict[str, Any]:
@@ -85,21 +65,21 @@ def prepare(paths: MimicPaths, seed: int = 13, limit: int | None = None) -> dict
         nrows=limit,
     )
     notes["split"] = notes["subject_id"].map(split_patients(notes["subject_id"], seed))
-    dx = _dx_lists(diagnoses(paths.hosp_dir))
+    coded = [coded_principal(paths.hosp_dir).get(int(str(h))) for h in notes["hadm_id"]]
 
     rows, section_hits = [], dict.fromkeys(SECTIONS, 0)
     lengths, trimmed = [], 0
-    for note_id, hadm, split, text in zip(
-        notes["note_id"], notes["hadm_id"], notes["split"], notes["text"], strict=True
-    ):
+    with_principal, secondary = 0, 0
+    for note_id, split, text in zip(notes["note_id"], notes["split"], notes["text"], strict=True):
         sec = split_sections(text)
         for name in sec:
             section_hits[name] += 1
         inp, cut = extraction_input(text)
         trimmed += cut
         lengths.append(len(inp))
-        principal, secondary = dx.get(int(hadm), (None, []))
-        label = silver_labels(text, principal, secondary)
+        label = silver_labels(text)
+        with_principal += label.principal_diagnosis is not None
+        secondary += len(label.secondary_diagnoses)
         rows.append(
             {"note_id": note_id, "split": split, "input": inp, "silver": label.model_dump_json()}
         )
@@ -119,13 +99,10 @@ def prepare(paths: MimicPaths, seed: int = 13, limit: int | None = None) -> dict
         "section_presence": {k: round(v / max(n, 1), 3) for k, v in section_hits.items()},
         "input_tokens_approx": lens.quantile([0.5, 0.9, 0.99]).round().to_dict(),
         "inputs_trimmed": round(trimmed / max(n, 1), 3),
-        "notes_with_coded_principal_dx": round(
-            float(np.mean([_principal(dx, h) is not None for h in notes["hadm_id"]])), 3
-        ),
-        "notes_with_icd10_principal": round(
-            float(np.mean([bool((p := _principal(dx, h)) and p.icd10) for h in notes["hadm_id"]])),
-            3,
-        ),
+        "notes_with_coded_principal_dx": round(float(np.mean([v is not None for v in coded])), 3),
+        "notes_with_icd10_principal": round(float(np.mean([v == 10 for v in coded])), 3),
+        "silver_principal_dx_from_note": round(with_principal / max(n, 1), 3),
+        "silver_secondary_dx_per_note": round(secondary / max(n, 1), 2),
         "silver_med_changes_per_note": round(
             float(np.mean([len(json.loads(r["silver"])["medication_changes"]) for r in rows])), 2
         )
