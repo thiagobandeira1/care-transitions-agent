@@ -16,6 +16,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -53,6 +54,18 @@ def examples(source: str, split: str, limit: int, seed: int) -> list[dict[str, o
     return out
 
 
+def fitting(tok: Any, items: list[dict[str, Any]], max_len: int) -> list[dict[str, Any]]:
+    """Examples whose prompt and answer fit in max_len tokens. Longer ones are dropped, not
+    truncated: truncation cuts the end of the JSON answer and trains on invalid JSON."""
+    out = []
+    for ex in items:
+        msgs = ex["prompt"] + ex["completion"]
+        ids = tok.apply_chat_template(msgs, tokenize=True, return_dict=True)["input_ids"]
+        if len(ids) <= max_len:
+            out.append(ex)
+    return out
+
+
 def main() -> None:
     load_dotenv()
     ap = argparse.ArgumentParser()
@@ -66,6 +79,7 @@ def main() -> None:
     ap.add_argument("--rank", type=int, default=16)
     ap.add_argument("--max-len", type=int, default=4096)
     ap.add_argument("--seed", type=int, default=3)
+    ap.add_argument("--resume", action="store_true", help="continue from the last checkpoint")
     args = ap.parse_args()
 
     os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
@@ -78,12 +92,18 @@ def main() -> None:
     work = Path(os.environ.get("MIMIC_WORK_DIR", Path.home() / "ctagent_work"))
     name = f"{args.base.split('/')[-1]}-extractor-{args.source}"
     out = assert_outside_repo(args.out or work / "models" / name)
-    train = Dataset.from_list(examples(args.source, "train", args.max_train, args.seed))
-    eval_split = "validation" if args.source == "mimic" else "test"
-    evals = Dataset.from_list(examples(args.source, eval_split, args.max_eval, args.seed))
-    print(f"train examples {len(train)} | eval examples {len(evals)} | base {args.base}")
-
     tok = AutoTokenizer.from_pretrained(args.base)
+    eval_split = "validation" if args.source == "mimic" else "test"
+    raw = {
+        s: examples(args.source, s, n, args.seed)
+        for s, n in (("train", args.max_train), (eval_split, args.max_eval))
+    }
+    kept = {s: fitting(tok, items, args.max_len) for s, items in raw.items()}
+    train, evals = Dataset.from_list(kept["train"]), Dataset.from_list(kept[eval_split])
+    dropped = {s: len(raw[s]) - len(kept[s]) for s in raw}
+    print(f"train examples {len(train)} | eval examples {len(evals)} | base {args.base}")
+    print(f"dropped over {args.max_len} tokens: {dropped}")
+
     model = AutoModelForCausalLM.from_pretrained(
         args.base,
         dtype=torch.bfloat16,
@@ -129,9 +149,11 @@ def main() -> None:
         processing_class=tok,
         peft_config=lora,
     )
-    trainer.train()
+    run = trainer.train(resume_from_checkpoint=args.resume or None)
     trainer.save_model(str(out / "adapter"))
-    metrics = trainer.evaluate()
+    metrics = {**run.metrics, **trainer.evaluate()}
+    metrics["peak_gpu_gb"] = torch.cuda.max_memory_allocated() / 1e9
+    metrics["train_examples"], metrics["dropped_over_max_len"] = len(train), dropped
     (out / "train_metrics.json").write_text(json.dumps(metrics, indent=2))
     print(json.dumps({k: round(v, 4) if isinstance(v, float) else v for k, v in metrics.items()}))
     print(f"adapter saved outside the repo: {out / 'adapter'}")

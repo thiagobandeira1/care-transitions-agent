@@ -45,3 +45,19 @@ def test_training_prompt_is_identical_to_zero_shot(
     assert prompt[0] == {"role": "system", "content": SYSTEM}
     assert prompt[1]["content"] == Extractor(FakeLLM()).prompt(NOTE)
     assert json.loads(completion[0]["content"]) == label
+
+
+class WordTokenizer:
+    def apply_chat_template(self, msgs, tokenize, return_dict):  # type: ignore[no-untyped-def]
+        return {"input_ids": " ".join(m["content"] for m in msgs).split()}
+
+
+def test_overlong_examples_are_dropped_not_truncated() -> None:
+    def ex(prompt: str) -> dict[str, list[dict[str, str]]]:
+        return {
+            "prompt": [{"role": "user", "content": prompt}],
+            "completion": [{"role": "assistant", "content": "{}"}],
+        }
+
+    items = [ex("a b c"), ex("a b c d e")]
+    assert load_script().fitting(WordTokenizer(), items, max_len=4) == items[:1]
