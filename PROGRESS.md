@@ -1,6 +1,6 @@
 # Progress: care-transitions-agent (Stage 4)
 
-_Last updated: 2026-10-27, ~5:30 AM, after the M7 fine-tune and the M8 export and evaluation. Local commits
+_Last updated: 2026-10-27, ~7 AM, after starting the option C run (teacher labels for the weak fields). Local commits
 only; nothing is pushed to GitHub yet. The M5 to M8 sections report MIMIC aggregates only (counts, rates,
 length quantiles, metrics). Every other number is from synthetic data (Synthea
 and notes generated from it). None of it is MMC data._
@@ -35,6 +35,49 @@ exported the same way. But silver is what it learned to reproduce, gaps included
 So this model should not replace the few-shot extractor in the agent. The training labels for follow-up,
 pending tests and red flags have to improve first (option C, below). This run stays in paper 2 as the
 silver-only arm, and ADR 0006 records the finding.
+
+## Option C: running (started 2026-10-27, ~7 AM)
+This is not an FIU project (Thiago, 2026-10-27), so it went ahead without waiting for co-authors.
+`scripts/teacher_label.py` has qwen3:14b, with the M6 few-shot prompt (3 train examples, seed 5), label
+follow-up, pending tests and red flags. Diagnoses and medication changes stay silver. Then three fine-tunes
+use the same notes:
+
+| Run | Labels | Train notes | Question it answers |
+|---|---|---|---|
+| `ctagent-extractor-c2500` | silver + teacher | 2,500 | Does option C bring the weak fields back? |
+| `ctagent-extractor-s2500` | silver only | the same 2,500 | Control: only the label source differs |
+| `ctagent-extractor-c1250` | silver + teacher | first 1,250 of them | Learning curve: would more notes help? |
+
+The teacher also labels 300 validation notes for the eval loss. Each model is exported like M8 and scored on
+the 107 synthetic notes and the 200 MIMIC gold-set notes (against silver).
+
+**Why 2,500 notes:**
+- **Enough examples of the rarest field.** On the 200 gold-set notes the 14b teacher lists follow-ups in 46%
+  of notes, pending tests in 24% and red flags in 78%. At 2,500 notes that's about 600 notes with pending
+  tests (the rarest field), 1,100 with follow-ups and 1,900 with red flags.
+- **The first fine-tune flattened early.** Validation loss was 0.0233 at 1,600 examples, 0.0175 at 3,200,
+  0.0153 at 4,800 and 0.0136 at 8,000. Most of the drop came before 5,000 examples.
+- **The teacher sets the ceiling.** On the weak fields a student learns its teacher, mistakes included. More
+  notes from the same teacher won't make it better than the teacher.
+- **It fits in one run.** Notes that fit the 3,072-token training limit took about 6 s each in the smoke test
+  (the 13.5 s M6 figure was for full-length gold-set notes), so 2,800 notes is roughly 5-8 hours. Training
+  each 2,500-note model takes about 1.3 hours.
+- **It can grow.** Labels are appended note by note in a fixed order, and a smaller run uses the first notes.
+  If c1250 → c2500 still improves the weak fields, rerunning with `--n-train 5000` adds notes without
+  relabeling any.
+
+**Design details:**
+- Train notes follow the training script's shuffled order (seed 3), so they are a subset of the first
+  fine-tune's 8,851.
+- Notes whose training example would pass 3,072 tokens are skipped before labeling, with 192 tokens of margin
+  for the teacher's longer answers, so no GPU time goes to notes the trainer would drop.
+- The 3 few-shot example notes are skipped.
+- A stopped run resumes with the same command.
+
+**Caveat:** MIMIC redacts the Followup Instructions section, so the follow-ups the teacher finds come from
+other sections, such as the discharge instructions. On the weak fields the teacher and silver disagree a lot:
+pending tests precision 0.10 and recall 0.09, red flags 0.08 and 0.33 (M6, 14b few-shot vs silver). Only the
+gold set can say which one is right.
 
 ## Earlier finding (2026-10-26): the model never saw the field instructions
 Each LLM call returns JSON that must match a schema, and the schema's field descriptions held the
@@ -205,7 +248,7 @@ model to write billing titles, which would score well against that silver and po
 diagnoses now come from the note's Discharge Diagnosis section (headings such as "Chronic issues" and `___`
 placeholders are skipped). Medication changes are unchanged. Follow-up, red flags and pending tests stay
 rule-based and weak, and the paper will show per-field gold results so this is visible. Option C (14b teacher
-labels for the weak fields) remains open for discussion with the FIU co-authors.
+labels for the weak fields) was left for later; it started on 2026-10-27 (Option C section).
 
 ### M7: QLoRA fine-tune
 **Pipeline test.** `scripts/train_qlora.py --source synthetic --base Qwen/Qwen3-0.6B --max-train 40 --max-eval 10`
@@ -323,8 +366,8 @@ What this shows:
 **Next step for training: better labels for the weak fields** (option C). Train on silver diagnoses and
 medications plus 14b few-shot labels for follow-up, pending tests and red flags, then compare three arms on
 gold: few-shot, silver-only fine-tune (this run), and silver + teacher fine-tune. Labeling 10,000 train notes
-with 14b few-shot takes about 37 GPU hours at 13.5 s per note (or about 9 hours for 2,500 notes). Thiago and
-the FIU co-authors decide.
+with 14b few-shot takes about 37 GPU hours at 13.5 s per note (or about 9 hours for 2,500 notes). Started on
+2,500 notes on 2026-10-27 (Option C section).
 
 ### M9: review screen smoke test
 `demo --n 5` processed 5 synthetic discharges to the review pause (1 high tier, 4 standard). In the Streamlit
@@ -341,17 +384,17 @@ Product notes from reading the drafts (for the pilot, not bugs):
 ## What needs you
 1. **MIMIC-IV-Note download:** done and verified (M5 above).
 2. **Gold set** (paper 2's reference): exported. Annotate the 200 folders in `MIMIC_WORK_DIR/gold/` following
-   `docs/ANNOTATION.md`, ideally with an FIU co-author for the 50-note overlap. Run `uv run python -m ctagent
-   gold-check` to see progress and agreement.
+   `docs/ANNOTATION.md`. Run `uv run python -m ctagent gold-check` to see progress and agreement. With no FIU
+   co-author, the 50-note overlap needs either a second annotator with their own PhysioNet credentialing (the
+   MIMIC DUA forbids showing notes to anyone else), or your own second pass on those 50 notes at least two
+   weeks later, reported as intra-annotator agreement.
 3. **Publishing:** the repo was to stay local until the MIMIC baselines (M6) were in (Thiago, 2026-10-26). They
    are in. On your OK I'll create the public GitHub repo. It contains no MIMIC data and nothing from MMC (only
    aggregate metrics in `evals/results/`); the CI guard checks this.
-4. **Silver labels for M7:** decided (B) and done. Option C stays open for the FIU co-authors.
-5. **Labels for the next fine-tune (new, 2026-10-27):** the silver-only model learned silver's gaps (M8 above).
-   Option C, teacher labels from 14b few-shot for follow-up, pending tests and red flags, is the recommended
-   next training run: about 37 GPU hours for 10,000 notes, or about 9 for 2,500. Your call, ideally with the
-   FIU co-authors. The gold set (item 2) matters more now: it decides whether the fine-tune's gains on
-   diagnoses and medications are real.
+4. **Silver labels for M7:** decided (B) and done.
+5. **Labels for the next fine-tune:** option C is running on 2,500 notes (not an FIU project, so no wait). The
+   gold set (item 2) matters more now: it decides whether the fine-tune's gains on diagnoses and medications
+   are real, and whether the teacher or silver is right on the weak fields.
 
 ## How to run
 ```
@@ -372,4 +415,6 @@ uv run python -m ctagent mimic-bench --mode few --model qwen3:8b --rescore   # r
 .venv-train/Scripts/python scripts/export_ollama.py --base C:/Users/Thiago/models/Qwen3-8B --name qwen3-8b-local --out C:/Users/Thiago/models/qwen3-8b-gguf   # control
 uv run python -m ctagent mimic-bench --mode zero --model ctagent-extractor
 uv run python -m ctagent extract-bench --mode zero --model ctagent-extractor
+.venv-train/Scripts/python scripts/teacher_label.py --base C:/Users/Thiago/models/Qwen3-8B --n-train 2500 --n-val 300   # option C, resumable
+.venv-train/Scripts/python scripts/train_qlora.py --source mimic --base C:/Users/Thiago/models/Qwen3-8B --teacher-dir <MIMIC_WORK_DIR>/teacher --labels teacher --max-train 2500   # --labels silver: control
 ```

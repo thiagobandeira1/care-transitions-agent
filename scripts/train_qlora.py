@@ -3,6 +3,8 @@
   (environment: UV_PROJECT_ENVIRONMENT=.venv-train uv sync --group dev --group train)
   .venv-train/Scripts/python scripts/train_qlora.py --source mimic --base Qwen/Qwen3-8B
   .venv-train/Scripts/python scripts/train_qlora.py --source synthetic --base Qwen/Qwen3-0.6B
+  # option C: notes labeled by scripts/teacher_label.py; --labels silver is the control
+  .venv-train/Scripts/python scripts/train_qlora.py --source mimic --teacher-dir D --labels teacher
 
 Inputs: MIMIC parquet splits from `mimic-prep` (MIMIC_WORK_DIR, outside the repo), or the public
 synthetic benchmark (pipeline test only). The adapter is written OUTSIDE the repo
@@ -20,6 +22,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+from ctagent import teacher
 from ctagent.benchmark import load as load_synthetic
 from ctagent.extraction import DischargeExtraction
 from ctagent.extractor import SYSTEM, Extractor
@@ -27,43 +30,68 @@ from ctagent.llm import FakeLLM
 from ctagent.privacy import assert_outside_repo
 
 
-def examples(source: str, split: str, limit: int, seed: int) -> list[dict[str, object]]:
-    prompter = Extractor(FakeLLM())  # zero-shot prompt builder only; no model is called
+def pair(note: str, label: str) -> dict[str, Any]:
+    """One prompt-completion example; the prompt is the zero-shot extractor's, byte for byte."""
+    DischargeExtraction.model_validate_json(label)  # every target must parse
+    return {
+        "prompt": [
+            {"role": "system", "content": SYSTEM},
+            {"role": "user", "content": Extractor(FakeLLM()).prompt(note)},
+        ],
+        "completion": [{"role": "assistant", "content": label}],
+    }
+
+
+def examples(
+    source: str,
+    split: str,
+    limit: int,
+    seed: int,
+    teacher_dir: Path | None = None,
+    labels: str = "silver",
+) -> list[dict[str, Any]]:
+    """With `teacher_dir`, only the notes the teacher labeled, in labeling order, so a smaller
+    limit is a nested subset. `labels` 'teacher' merges teacher follow-up, pending tests and red
+    flags into silver; 'silver' trains the same notes on silver alone, as a control."""
+    if labels == "teacher" and teacher_dir is None:
+        raise ValueError("teacher labels need --teacher-dir")
     if source == "synthetic":
         items = load_synthetic("train" if split == "train" else "test")
         pairs = [(x["note"], json.dumps(x["reference"])) for x in items]
-    else:
+    elif teacher_dir is None:
         import pandas as pd
 
         work = Path(os.environ["MIMIC_WORK_DIR"])
         df = pd.read_parquet(work / f"{split}.parquet").sample(frac=1.0, random_state=seed)
         # MIMIC inputs are already the extraction sections; the prompt builder re-sections them
         pairs = [(str(i), str(s)) for i, s in zip(df["input"], df["silver"], strict=True)]
-    out = []
-    for note, label in pairs[:limit]:
-        DischargeExtraction.model_validate_json(label)  # every target must parse
-        out.append(
-            {
-                "prompt": [
-                    {"role": "system", "content": SYSTEM},
-                    {"role": "user", "content": prompter.prompt(note)},
-                ],
-                "completion": [{"role": "assistant", "content": label}],
-            }
-        )
-    return out
+    else:
+        import pandas as pd
+
+        work = Path(os.environ["MIMIC_WORK_DIR"])
+        weak = teacher.load(teacher_dir / f"{split}.jsonl")
+        df = pd.read_parquet(work / f"{split}.parquet").set_index("note_id").loc[list(weak)]
+        pairs = []
+        for note_id, text, silver in zip(df.index, df["input"], df["silver"], strict=True):
+            if labels == "teacher":
+                silver = teacher.merge(
+                    DischargeExtraction.model_validate_json(silver), weak[note_id]
+                ).model_dump_json()
+            pairs.append((str(text), str(silver)))
+    return [pair(note, label) for note, label in pairs[:limit]]
+
+
+def fits(tok: Any, ex: dict[str, Any], max_len: int) -> bool:
+    msgs = ex["prompt"] + ex["completion"]
+    return (
+        len(tok.apply_chat_template(msgs, tokenize=True, return_dict=True)["input_ids"]) <= max_len
+    )
 
 
 def fitting(tok: Any, items: list[dict[str, Any]], max_len: int) -> list[dict[str, Any]]:
     """Examples whose prompt and answer fit in max_len tokens. Longer ones are dropped, not
     truncated: truncation cuts the end of the JSON answer and trains on invalid JSON."""
-    out = []
-    for ex in items:
-        msgs = ex["prompt"] + ex["completion"]
-        ids = tok.apply_chat_template(msgs, tokenize=True, return_dict=True)["input_ids"]
-        if len(ids) <= max_len:
-            out.append(ex)
-    return out
+    return [ex for ex in items if fits(tok, ex, max_len)]
 
 
 def use_efficient_attention() -> None:
@@ -94,6 +122,8 @@ def main() -> None:
     # so 4096 would spill into system RAM and crawl. 3072 keeps ~89% of MIMIC examples.
     ap.add_argument("--max-len", type=int, default=3072)
     ap.add_argument("--seed", type=int, default=3)
+    ap.add_argument("--teacher-dir", type=Path, default=None, help="train on teacher-labeled notes")
+    ap.add_argument("--labels", choices=["silver", "teacher"], default="silver")
     ap.add_argument("--resume", action="store_true", help="continue from the last checkpoint")
     # On Windows a full GPU spills into system RAM instead of raising out-of-memory, and training
     # slows several-fold without an error. A cap makes PyTorch free its cache before reaching it.
@@ -112,11 +142,13 @@ def main() -> None:
     torch.cuda.set_per_process_memory_fraction(args.gpu_fraction)
     work = Path(os.environ.get("MIMIC_WORK_DIR", Path.home() / "ctagent_work"))
     name = f"{args.base.split('/')[-1]}-extractor-{args.source}"
+    if args.teacher_dir:
+        name += f"-{args.labels}{args.max_train}"
     out = assert_outside_repo(args.out or work / "models" / name)
     tok = AutoTokenizer.from_pretrained(args.base)
     eval_split = "validation" if args.source == "mimic" else "test"
     raw = {
-        s: examples(args.source, s, n, args.seed)
+        s: examples(args.source, s, n, args.seed, args.teacher_dir, args.labels)
         for s, n in (("train", args.max_train), (eval_split, args.max_eval))
     }
     kept = {s: fitting(tok, items, args.max_len) for s, items in raw.items()}

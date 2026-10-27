@@ -39,6 +39,16 @@ themselves as a baseline, shows whether it learned more than the rules. That com
   fine-tuned model replaces the few-shot extractor in the agent. Option C (a 14b few-shot teacher for those
   fields, silver for diagnoses and medications) is the leading candidate. This run stays in paper 2 as the
   silver-only arm.
+- **Option C started (2026-10-27).** qwen3:14b few-shot (the M6 configuration) labels follow-up, pending
+  tests and red flags on 2,500 train notes and 300 validation notes; silver keeps diagnoses and medications.
+  The notes are a nested, resumable sample, so the set can grow if a learning curve (1,250 vs 2,500) says more
+  notes help. A silver-only model on the same 2,500 notes is the control, so only the label source differs.
+  2,500 gives about 600 notes with pending tests, the rarest weak field, and the first run's validation loss
+  had mostly flattened by 5,000 examples. The student cannot beat its teacher on these fields, so teacher
+  quality matters more than note count.
+- **Gold agreement without a second annotator:** this is not an FIU project. The 50-note overlap needs a second
+  PhysioNet-credentialed annotator, or else a second pass by the same annotator at least two weeks later,
+  reported as intra-annotator agreement.
 - **Export:** Ollama 0.40 no longer quantizes safetensors to Q4_K_M or loads LoRA adapters. The merged model is
   converted and quantized with llama.cpp, and a control (the base model through the same steps) isolates the
   fine-tune from quantization differences.
