@@ -66,6 +66,18 @@ def fitting(tok: Any, items: list[dict[str, Any]], max_len: int) -> list[dict[st
     return out
 
 
+def use_efficient_attention() -> None:
+    """Repeat the key/value heads instead of passing enable_gqa to SDPA.
+
+    Without flash attention (PyTorch on Windows), SDPA's grouped-query path falls back to the math
+    kernel, which builds the full attention matrix: about 5 GB per layer at 3,072 tokens for
+    Qwen3-8B, measured. With repeated heads the memory-efficient kernel runs, using about 0.2 GB.
+    """
+    from transformers.integrations import sdpa_attention
+
+    sdpa_attention.use_gqa_in_sdpa = lambda *args, **kwargs: False
+
+
 def main() -> None:
     load_dotenv()
     ap = argparse.ArgumentParser()
@@ -77,18 +89,27 @@ def main() -> None:
     ap.add_argument("--epochs", type=float, default=1.0)
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--rank", type=int, default=16)
-    ap.add_argument("--max-len", type=int, default=4096)
+    # 16 GB GPU: a synthetic probe peaks at 10.6 GB at 3k tokens and 12.0 GB at 4k. Real runs need
+    # ~2 GB more (CUDA context, fragmentation from varying lengths) and the Windows desktop ~1.3 GB,
+    # so 4096 would spill into system RAM and crawl. 3072 keeps ~89% of MIMIC examples.
+    ap.add_argument("--max-len", type=int, default=3072)
     ap.add_argument("--seed", type=int, default=3)
     ap.add_argument("--resume", action="store_true", help="continue from the last checkpoint")
+    # On Windows a full GPU spills into system RAM instead of raising out-of-memory, and training
+    # slows several-fold without an error. A cap makes PyTorch free its cache before reaching it.
+    ap.add_argument("--gpu-fraction", type=float, default=0.85, help="cap on GPU memory use")
     args = ap.parse_args()
 
     os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "garbage_collection_threshold:0.8")
     import torch
     from datasets import Dataset
     from peft import LoraConfig
     from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
     from trl import SFTConfig, SFTTrainer
 
+    use_efficient_attention()
+    torch.cuda.set_per_process_memory_fraction(args.gpu_fraction)
     work = Path(os.environ.get("MIMIC_WORK_DIR", Path.home() / "ctagent_work"))
     name = f"{args.base.split('/')[-1]}-extractor-{args.source}"
     out = assert_outside_repo(args.out or work / "models" / name)
@@ -120,6 +141,7 @@ def main() -> None:
         num_train_epochs=args.epochs,
         learning_rate=args.lr,
         per_device_train_batch_size=1,
+        per_device_eval_batch_size=1,  # the default of 8 would not fit at max_len
         gradient_accumulation_steps=8,
         gradient_checkpointing=True,
         bf16=True,
