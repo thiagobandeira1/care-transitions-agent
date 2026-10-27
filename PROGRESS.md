@@ -1,8 +1,8 @@
 # Progress: care-transitions-agent (Stage 4)
 
-_Last updated: 2026-10-26, ~11:50 PM, after relabeling the silver diagnoses (option B) and starting the real
-M7 fine-tune. Local commits only; nothing is pushed to GitHub yet. The M5, M6 and M7 sections report MIMIC
-aggregates only (counts, rates, length quantiles, metrics). Every other number is from synthetic data (Synthea
+_Last updated: 2026-10-27, ~5:30 AM, after the M7 fine-tune and the M8 export and evaluation. Local commits
+only; nothing is pushed to GitHub yet. The M5 to M8 sections report MIMIC aggregates only (counts, rates,
+length quantiles, metrics). Every other number is from synthetic data (Synthea
 and notes generated from it). None of it is MMC data._
 
 ## Where things stand
@@ -15,11 +15,28 @@ and notes generated from it). None of it is MMC data._
 | M4 public synthetic extraction benchmark | ✅ done: 150 notes (43 train / 107 test), rules vs zero-/few-shot 8b and 14b |
 | M5 MIMIC-IV-Note prep code + gold-annotation tooling | ✅ done: download verified, prep run, 200-note gold set exported |
 | M6 baselines on MIMIC (zero-/few-shot) | ✅ done against silver labels, with diagnoses now taken from the note (below); the gold-label run waits for annotation |
-| M7 QLoRA fine-tune | ⏳ real run started 11:39 PM: Qwen3-8B on 8,851 MIMIC train notes, about 4 hours (below) |
-| M8 GGUF/Ollama export | script written, not run (needs the M7 adapter) |
+| M7 QLoRA fine-tune | ✅ done: Qwen3-8B, 1 epoch on 8,851 MIMIC train notes with silver labels, 4.4 h, eval loss 0.0136 |
+| M8 GGUF/Ollama export + evaluation | ✅ done: Q4_K_M GGUF via llama.cpp, in Ollama as `ctagent-extractor`; scored on 200 MIMIC and 107 synthetic notes with a matched control (below) |
 | M9 review screen and demo | ✅ smoke-tested on 5 synthetic discharges (queue, drafts, approve) |
 
-## The main finding this morning: the model never saw the field instructions
+## The main finding tonight: the fine-tuned model copies its training labels, blind spots included
+The fine-tune worked mechanically: no schema failures, 4.5 s per note (about half the base model's time), and
+0.958 micro F1 against the silver labels on the 200 gold-set notes, against 0.563 for the same base model
+exported the same way. But silver is what it learned to reproduce, gaps included:
+- **Silver has no follow-ups** (MIMIC redacts that section), so the fine-tuned model never outputs one, in 0 of
+  200 notes. The base model found about one per note.
+- **On the public synthetic notes,** where every field has a known answer, micro F1 fell from 0.949 (control)
+  to 0.788. Follow-up fell from 0.773 to 0.057, pending tests from 0.958 to 0.592, and red flags from 0.994 to
+  0.679. Only the principal diagnosis improved (0.939 → 1.000).
+- **Diagnoses and medications are where silver is good,** and there the fine-tune lifted the 8b model from
+  0.63-0.92 to 0.98-1.00 against silver. If the gold set confirms silver on those fields, that part is a real
+  gain.
+
+So this model should not replace the few-shot extractor in the agent. The training labels for follow-up,
+pending tests and red flags have to improve first (option C, below). This run stays in paper 2 as the
+silver-only arm, and ADR 0006 records the finding.
+
+## Earlier finding (2026-10-26): the model never saw the field instructions
 Each LLM call returns JSON that must match a schema, and the schema's field descriptions held the
 instructions ("2-3 plain sentences", "every medication, continued ones too"). Ollama uses the schema only to
 constrain the output format; the model never reads the descriptions. So the instructions never reached it.
@@ -228,17 +245,86 @@ no margin on 16 GB, and a spill overnight would stall the run). Longer examples 
 answer and train on invalid JSON. The fine-tuned model therefore trains on the shorter 89% of notes and is
 evaluated on all of them, which the paper should state.
 
-**The real run** (started 2026-10-26, 11:39 PM): Qwen3-8B, 4-bit NF4, LoRA rank 16 (alpha 32) on all linear
-layers, learning rate 2e-4 with cosine decay and 3% warm-up, 1 epoch, effective batch 8 (batch 1, 8 gradient
-accumulation steps), gradient checkpointing, bf16, eval batch 1. Data: 10,000 random train notes, of which
-8,851 fit (1,149 dropped), and 264 of 300 validation notes for eval loss every 200 steps. That is 1,107
-optimizer steps at 13.5 s each over the first 20, so about 4 hours plus evaluation, finishing around 4 AM
-(the attention fix halved the time). Checkpoints are saved every 200 steps, and
-`--resume` continues after an interruption. The adapter and checkpoints are written to `MIMIC_WORK_DIR/models`,
-outside the repo.
+**The real run** (2026-10-26 11:39 PM to 2026-10-27 4:06 AM): Qwen3-8B, 4-bit NF4, LoRA rank 16 (alpha 32)
+on all linear layers, learning rate 2e-4 with cosine decay and 3% warm-up, 1 epoch, effective batch 8 (batch
+1, 8 gradient accumulation steps), gradient checkpointing, bf16, eval batch 1. Data: 10,000 random train
+notes, of which 8,851 fit (1,149 dropped), and 264 of 300 validation notes for eval loss every 200 steps.
+1,107 optimizer steps at about 13 s each: 4.4 hours (15,940 s), peak GPU memory 10.6 GB allocated, no errors.
+Checkpoints were saved every 200 steps (`--resume` continues after an interruption), and the adapter and
+checkpoints are in `MIMIC_WORK_DIR/models`, outside the repo.
 
-Next (M8): merge the adapter, export to GGUF, load it into Ollama, and run `mimic-bench` on the same 200 notes,
-so the fine-tuned model is compared with the zero- and few-shot rows above.
+| Step | 200 | 400 | 600 | 800 | 1,000 | 1,107 (end) |
+|---|---|---|---|---|---|---|
+| Eval loss | 0.0233 | 0.0175 | 0.0153 | 0.0138 | 0.0136 | 0.0136 |
+| Eval token accuracy | 99.4% | 99.6% | 99.6% | 99.7% | 99.7% | 99.7% |
+
+Train loss fell from 0.55 at the first log (step 10) to about 0.015 at the end (mean 0.024). Eval loss was
+flat over the last ~300 steps, with no sign of overfitting. The low loss only says the model reproduces silver
+tokens: most answer tokens are JSON structure or text copied from the note. M8 measures what it learned.
+
+### M8: export to Ollama, and the fine-tuned model's scores
+**Export.** `scripts/export_ollama.py` merges the adapter into the bf16 base on the CPU, converts it to GGUF
+with llama.cpp's `convert_hf_to_gguf.py`, quantizes it to Q4_K_M with `llama-quantize` (4.9 bits per weight,
+5.0 GB), and imports it into Ollama as `ctagent-extractor` with qwen3:8b's prompt template and stop tokens.
+The plan was to let Ollama quantize, but Ollama 0.40 no longer quantizes safetensors to Q4_K_M or loads LoRA
+adapters. llama.cpp is a shallow clone plus the official release b11921 CPU binaries, in
+`C:\Users\Thiago\tools`, outside the repos. Two snags, both fixed in the script:
+- transformers 5 re-saves tokenizer files in a format the converter's pinned transformers 4 can't read. The
+  fine-tune doesn't change the tokenizer, so the base model's own files are copied in.
+- The converter warns "Unknown RoPE type: default". It is harmless: the GGUF's RoPE base was checked
+  (1,000,000, as in the base config).
+
+A smoke test on one synthetic note gave valid JSON with no thinking tokens, in 5 s.
+
+**Control.** The untouched base model went through the same conversion and quantization (`qwen3-8b-local`).
+The library qwen3:8b file is 5.23 GB against 5.03 GB for ours, so the two quantizers made slightly different
+per-tensor choices. With the control, the comparison differs only in the fine-tune. The control scores within
+0.02 of the library model on both benchmarks, so quantization explains almost none of the gap.
+
+MIMIC, 200 gold-set notes, silver labels (preliminary until the gold set is annotated):
+
+| Model | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | Med change type acc. | s / note (GPU) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| qwen3:8b zero-shot (Ollama library) | 0.916 | 0.706 | 0.621 | 0.000 | 0.048 | 0.066 | **0.546** (0.493-0.592) | 0.460 | 0.72 | 7.2* |
+| qwen3-8b-local zero-shot (control) | 0.922 | 0.723 | 0.628 | 0.000 | 0.058 | 0.083 | **0.563** (0.529-0.598) | 0.472 | 0.72 | 7.2 |
+| qwen3:8b few-shot (3) | 0.924 | 0.846 | 0.683 | 0.000 | 0.077 | 0.104 | **0.630** (0.594-0.664) | 0.547 | 0.77 | 9.1 |
+| qwen3:14b few-shot (3) | 0.932 | 0.775 | 0.685 | 0.000 | 0.091 | 0.123 | **0.631** (0.597-0.665) | 0.552 | 0.78 | 13.5 |
+| **ctagent-extractor (fine-tuned 8b)** | 0.995 | 0.997 | 0.980 | 0.000 | 0.496 | 0.669 | **0.958** (0.941-0.972) | 0.955 | 0.99 | 4.5 |
+
+\*As in M6: mean over notes 91-200.
+
+Synthetic benchmark, 107 test notes with known answers:
+
+| Model | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | Med change type acc. | s / note (GPU) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| qwen3:8b zero-shot (Ollama library) | 0.953 | 0.986 | 0.954 | 0.776 | 0.944 | 0.994 | **0.947** (0.933-0.959) | 0.881 | 0.99 | 5.4 |
+| qwen3-8b-local zero-shot (control) | 0.939 | 0.982 | 0.963 | 0.773 | 0.958 | 0.994 | **0.949** (0.937-0.961) | 0.883 | 1.00 | 5.2 |
+| qwen3:8b few-shot (3) | 0.925 | 0.979 | 0.983 | 0.856 | 0.957 | 0.994 | **0.965** (0.955-0.974) | 0.941 | 1.00 | 5.8 |
+| qwen3:14b few-shot (3) | 0.935 | 0.981 | 0.981 | 0.981 | 0.943 | 0.994 | **0.979** (0.970-0.987) | 0.969 | 0.99 | 9.5 |
+| **ctagent-extractor (fine-tuned 8b)** | 1.000 | 0.964 | 0.919 | 0.057 | 0.592 | 0.679 | **0.788** (0.768-0.812) | 0.758 | 0.96 | 3.6 |
+
+What this shows:
+- **Against silver, the fine-tuned model is close to a copy of the rule-based labeler.** Its per-note item
+  counts on the 200 notes match silver's: 2.25 secondary diagnoses per note with 36% of notes empty (silver:
+  2.25 and 36%), 11.3 medication changes (silver: 11.3), and no follow-ups (silver: none). The zero-shot model
+  gives 2.7 secondary diagnoses with 22% empty, and about one follow-up per note. 0.958 measures imitation of
+  the rules, not clinical correctness. The gold set measures that.
+- **It learned silver's blind spots.** It never outputs a follow-up, and it lists fewer pending tests than the
+  base model (0.17 per note vs 0.83; silver 0.41). On the synthetic notes, which state every field
+  explicitly, it lost most of the base model's skill on follow-up, pending tests and red flags. It still
+  lists red flags on MIMIC more often than silver (1.06 per note vs 0.60), so it did not copy that rule
+  exactly.
+- **It is faster:** 4.5 s per note on MIMIC against 7.2-9.1 s, since its answers are shorter and the prompt
+  carries no examples.
+- **On diagnoses and medications it matches silver almost perfectly** (0.98-1.00, against 0.62-0.92 for the
+  base model). Silver is a fair reference there, so this is probably a real gain, but only the gold set can
+  confirm it.
+
+**Next step for training: better labels for the weak fields** (option C). Train on silver diagnoses and
+medications plus 14b few-shot labels for follow-up, pending tests and red flags, then compare three arms on
+gold: few-shot, silver-only fine-tune (this run), and silver + teacher fine-tune. Labeling 10,000 train notes
+with 14b few-shot takes about 37 GPU hours at 13.5 s per note (or about 9 hours for 2,500 notes). Thiago and
+the FIU co-authors decide.
 
 ### M9: review screen smoke test
 `demo --n 5` processed 5 synthetic discharges to the review pause (1 high tier, 4 standard). In the Streamlit
@@ -261,6 +347,11 @@ Product notes from reading the drafts (for the pilot, not bugs):
    are in. On your OK I'll create the public GitHub repo. It contains no MIMIC data and nothing from MMC (only
    aggregate metrics in `evals/results/`); the CI guard checks this.
 4. **Silver labels for M7:** decided (B) and done. Option C stays open for the FIU co-authors.
+5. **Labels for the next fine-tune (new, 2026-10-27):** the silver-only model learned silver's gaps (M8 above).
+   Option C, teacher labels from 14b few-shot for follow-up, pending tests and red flags, is the recommended
+   next training run: about 37 GPU hours for 10,000 notes, or about 9 for 2,500. Your call, ideally with the
+   FIU co-authors. The gold set (item 2) matters more now: it decides whether the fine-tune's gains on
+   diagnoses and medications are real.
 
 ## How to run
 ```
@@ -277,4 +368,8 @@ uv run python -m ctagent gold-export --n 200 --overlap 50
 uv run python -m ctagent mimic-bench --mode few --model qwen3:8b   # add --ref gold once annotated
 uv run python -m ctagent mimic-bench --mode few --model qwen3:8b --rescore   # rescore saved predictions
 .venv-train/Scripts/python scripts/train_qlora.py --source mimic --base C:/Users/Thiago/models/Qwen3-8B
+.venv-train/Scripts/python scripts/export_ollama.py --base C:/Users/Thiago/models/Qwen3-8B --adapter <MIMIC_WORK_DIR>/models/Qwen3-8B-extractor-mimic/adapter
+.venv-train/Scripts/python scripts/export_ollama.py --base C:/Users/Thiago/models/Qwen3-8B --name qwen3-8b-local --out C:/Users/Thiago/models/qwen3-8b-gguf   # control
+uv run python -m ctagent mimic-bench --mode zero --model ctagent-extractor
+uv run python -m ctagent extract-bench --mode zero --model ctagent-extractor
 ```

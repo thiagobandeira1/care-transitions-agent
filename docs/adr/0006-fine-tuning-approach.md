@@ -24,3 +24,21 @@ labels are expensive. A ~200-note gold set is feasible; tens of thousands of han
 ## Consequences
 The fine-tuned model may partly learn the silver rules' biases. Comparing against gold, and against the rules
 themselves as a baseline, shows whether it learned more than the rules. That comparison is part of paper 2.
+
+## Update (2026-10-27): what the first fine-tune learned
+- **Silver diagnoses now come from the note** (the Discharge Diagnosis section), not from billing-code titles
+  (option B, decided by Thiago on 2026-10-26). Billing titles would have taught the model to write billing
+  titles.
+- **The expected bias is confirmed, and it is large.** The first run (silver labels only, 8,851 train notes)
+  reproduces silver almost exactly: 0.958 micro F1 against silver on the 200 gold-set notes, with per-note
+  item counts matching silver's. It also learned silver's blind spots. Silver has no follow-ups (MIMIC redacts
+  that section), so the model never outputs one. On the public synthetic notes, where every field has a
+  known answer, micro F1 fell from 0.947 (base 8b, zero-shot) to 0.788: follow-up 0.776 → 0.057, pending
+  tests 0.944 → 0.592, red flags 0.994 → 0.679.
+- **Consequence:** labels for the weak fields (follow-up, pending tests, red flags) must improve before a
+  fine-tuned model replaces the few-shot extractor in the agent. Option C (a 14b few-shot teacher for those
+  fields, silver for diagnoses and medications) is the leading candidate. This run stays in paper 2 as the
+  silver-only arm.
+- **Export:** Ollama 0.40 no longer quantizes safetensors to Q4_K_M or loads LoRA adapters. The merged model is
+  converted and quantized with llama.cpp, and a control (the base model through the same steps) isolates the
+  fine-tune from quantization differences.
