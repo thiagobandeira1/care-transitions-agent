@@ -3,6 +3,8 @@ Ollama (M8).
 
   .venv-train/Scripts/python scripts/export_ollama.py --base Qwen/Qwen3-8B --name ctagent-extractor
       --adapter <MIMIC_WORK_DIR>/models/Qwen3-8B-extractor-mimic/adapter
+  .venv-train/Scripts/python scripts/export_ollama.py --base <local Qwen3-8B folder>
+      --name qwen3-8b-local --out <folder>        (control: the base through the same steps)
 
 Steps, all next to the adapter (OUTSIDE the repo): merge into the bf16 base on the CPU, convert to a
 bf16 GGUF with llama.cpp's `convert_hf_to_gguf.py`, quantize to Q4_K_M with `llama-quantize`, then
@@ -45,7 +47,10 @@ def run(cmd: list[str]) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--adapter", type=Path, required=True)
+    # Without --adapter the base model is exported unchanged (a local folder), as a control with
+    # the same conversion and quantization as the fine-tuned model.
+    ap.add_argument("--adapter", type=Path, help="LoRA adapter to merge into the base")
+    ap.add_argument("--out", type=Path, help="output folder (default: next to the adapter)")
     ap.add_argument("--base", default="Qwen/Qwen3-8B")
     ap.add_argument("--name", default="ctagent-extractor")
     ap.add_argument("--quantize", default="Q4_K_M")
@@ -57,9 +62,15 @@ def main() -> None:
 
     import ollama
 
-    adapter = assert_outside_repo(args.adapter)
-    out = adapter.parent
-    merged = out / "merged"
+    if args.adapter:
+        adapter = assert_outside_repo(args.adapter)
+        out = assert_outside_repo(args.out or adapter.parent)
+        merged = out / "merged"
+    elif args.out and Path(args.base).is_dir():
+        out, merged = assert_outside_repo(args.out), Path(args.base)
+    else:
+        raise SystemExit("without --adapter, give --out and a local --base folder")
+    out.mkdir(parents=True, exist_ok=True)
     ref = ollama.Client(host="http://localhost:11434").show(args.format_from)
     if not ref.template or "<|im_start|>" not in ref.template:
         raise SystemExit(f"{args.format_from} has no Qwen chat template to copy")
@@ -68,7 +79,7 @@ def main() -> None:
     if quantize is None or not Path(quantize).exists() or not convert_py.exists():
         raise SystemExit("llama.cpp tools not found; see the setup notes in this script")
 
-    if not (merged / "model.safetensors").exists() and not any(merged.glob("*.safetensors")):
+    if args.adapter and not any(merged.glob("*.safetensors")):
         import torch
         from huggingface_hub import snapshot_download
         from peft import PeftModel
@@ -76,7 +87,7 @@ def main() -> None:
 
         bf = torch.bfloat16
         base = AutoModelForCausalLM.from_pretrained(args.base, dtype=bf, device_map="cpu")
-        model = PeftModel.from_pretrained(base, str(adapter)).merge_and_unload()
+        model = PeftModel.from_pretrained(base, str(args.adapter)).merge_and_unload()
         model.save_pretrained(str(merged), safe_serialization=True)
         # The fine-tune leaves the tokenizer unchanged. Copy the base model's own files: files
         # re-saved by transformers 5 can't be read by the transformers 4 that the converter pins.
@@ -87,8 +98,8 @@ def main() -> None:
         for f in files:
             shutil.copy(src / f, merged / f)
 
-    bf16 = out / "extractor-bf16.gguf"
-    quantized = out / f"extractor-{args.quantize}.gguf"
+    bf16 = out / f"{args.name}-bf16.gguf"
+    quantized = out / f"{args.name}-{args.quantize}.gguf"
     if not bf16.exists():
         convert = str(args.llama_cpp / "convert_hf_to_gguf.py")
         run([str(convert_py), convert, str(merged), "--outtype", "bf16", "--outfile", str(bf16)])
