@@ -23,6 +23,18 @@ flowchart LR
   I -. daily job .-> J[check-ins due]
 ```
 
+## Results so far (details in [PROGRESS.md](PROGRESS.md))
+- **Agent on Synthea:** qwen3:14b drafts the plan explanation, call script and provider brief in 15.8 s per
+  discharge on an RTX 4080, with no schema failures and no grounding flags in 30 discharges. CPU only, it takes
+  about 3 minutes per discharge.
+- **Extraction on the synthetic benchmark** (107 notes with known answers, micro F1): rules 0.696, qwen3:8b
+  zero-shot 0.947, qwen3:14b few-shot 0.979.
+- **QLoRA fine-tuning of Qwen3-8B on MIMIC-IV-Note:** trained on rule-based labels, the model copied them, gaps
+  included (synthetic micro F1 0.789). Labeling the weak fields with the 14b few-shot model instead brought them
+  back (0.948), at 2.4-2.8 times the 14b model's speed.
+- **Pending:** a hand-annotated MIMIC gold set, which decides whether fine-tuning or few-shot prompting is more
+  accurate on real notes. The MIMIC-trained weights are not distributed ([model card](docs/MODEL_CARD.md)).
+
 ## Design choices (see `docs/adr`)
 - **Fixed graph, narrow LLM jobs.** Small local models don't choose tools. Scores, tiers and deadlines are
   deterministic code. Every LLM output is schema-validated, retried once, then flagged for a human (ADR 0002).

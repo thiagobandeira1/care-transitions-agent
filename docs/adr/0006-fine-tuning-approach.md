@@ -59,7 +59,7 @@ themselves as a baseline, shows whether it learned more than the rules. That com
     fields it agrees with silver as little as its teacher does.
   - **Consequence:** c2500 is the candidate fine-tuned arm for paper 2. Gold decides teacher vs rules on the
     weak fields, and until then the few-shot extractor stays the agent's default.
-- **Gold agreement without a second annotator:** this is not an FIU project. The 50-note overlap needs a second
+- **Gold agreement without a second annotator:** there is no co-author to annotate. The 50-note overlap needs a second
   PhysioNet-credentialed annotator, or else a second pass by the same annotator at least two weeks later,
   reported as intra-annotator agreement.
 - **Export:** Ollama 0.40 no longer quantizes safetensors to Q4_K_M or loads LoRA adapters. The merged model is

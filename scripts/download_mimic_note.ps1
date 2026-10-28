@@ -1,14 +1,14 @@
 # Download the MIMIC-IV-Note v2.2 discharge files from PhysioNet, resuming after network drops.
 # Run in your own PowerShell window (you type your PhysioNet password once; it stays in memory only):
-#   powershell -ExecutionPolicy Bypass -File scripts\download_mimic_note.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts\download_mimic_note.ps1 -User <physionet user> -Dest <folder>
 # Requires a signed MIMIC-IV-Note data use agreement. Files land OUTSIDE this repository.
 #
 # PhysioNet only accepts password (HTTP Basic) logins from wget-style clients: other user agents
 # get 403 before the password is checked. So curl identifies as wget here. A login error (401/403)
 # stops the script at once, so a wrong password is never retried (no account lockout).
 param(
-    [string]$User = "thiagobandeira",
-    [string]$Dest = "C:\Users\Thiago\Documents\Coursework\Capstone Project\Dataset\mimic-iv-note-2.2\note"
+    [Parameter(Mandatory)][string]$User,
+    [Parameter(Mandatory)][string]$Dest
 )
 
 $base = "https://physionet.org/files/mimic-iv-note/2.2/note"

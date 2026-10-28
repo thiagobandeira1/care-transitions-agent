@@ -115,7 +115,7 @@ but it is not needed for correctness.
 MIMIC, the few-shot extractor stays the agent's default.
 
 ### How option C was run
-This is not an FIU project (Thiago, 2026-10-27), so it went ahead without waiting for co-authors.
+There were no co-authors to wait for (Thiago, 2026-10-27), so it went ahead right away.
 `scripts/teacher_label.py` has qwen3:14b, with the M6 few-shot prompt (3 train examples, seed 5), label
 follow-up, pending tests and red flags. Diagnoses and medication changes stay silver. Then three fine-tunes
 use the same notes:
@@ -406,7 +406,7 @@ with llama.cpp's `convert_hf_to_gguf.py`, quantizes it to Q4_K_M with `llama-qua
 5.0 GB), and imports it into Ollama as `ctagent-extractor` with qwen3:8b's prompt template and stop tokens.
 The plan was to let Ollama quantize, but Ollama 0.40 no longer quantizes safetensors to Q4_K_M or loads LoRA
 adapters. llama.cpp is a shallow clone plus the official release b11921 CPU binaries, in
-`C:\Users\Thiago\tools`, outside the repos. Two snags, both fixed in the script:
+a tools folder, outside the repos. Two snags, both fixed in the script:
 - transformers 5 re-saves tokenizer files in a format the converter's pinned transformers 4 can't read. The
   fine-tune doesn't change the tokenizer, so the base model's own files are copied in.
 - The converter warns "Unknown RoPE type: default". It is harmless: the GGUF's RoPE base was checked
@@ -479,7 +479,7 @@ Product notes from reading the drafts (for the pilot, not bugs):
 ## What needs you
 1. **MIMIC-IV-Note download:** done and verified (M5 above).
 2. **Gold set** (paper 2's reference): exported. Annotate the 200 folders in `MIMIC_WORK_DIR/gold/` following
-   `docs/ANNOTATION.md`. Run `uv run python -m ctagent gold-check` to see progress and agreement. With no FIU
+   `docs/ANNOTATION.md`. Run `uv run python -m ctagent gold-check` to see progress and agreement. With no
    co-author, the 50-note overlap needs either a second annotator with their own PhysioNet credentialing (the
    MIMIC DUA forbids showing notes to anyone else), or your own second pass on those 50 notes at least two
    weeks later, reported as intra-annotator agreement.
@@ -509,11 +509,11 @@ uv run python -m ctagent mimic-prep                               # after the MI
 uv run python -m ctagent gold-export --n 200 --overlap 50
 uv run python -m ctagent mimic-bench --mode few --model qwen3:8b   # add --ref gold once annotated
 uv run python -m ctagent mimic-bench --mode few --model qwen3:8b --rescore   # rescore saved predictions
-.venv-train/Scripts/python scripts/train_qlora.py --source mimic --base C:/Users/Thiago/models/Qwen3-8B
-.venv-train/Scripts/python scripts/export_ollama.py --base C:/Users/Thiago/models/Qwen3-8B --adapter <MIMIC_WORK_DIR>/models/Qwen3-8B-extractor-mimic/adapter
-.venv-train/Scripts/python scripts/export_ollama.py --base C:/Users/Thiago/models/Qwen3-8B --name qwen3-8b-local --out C:/Users/Thiago/models/qwen3-8b-gguf   # control
+.venv-train/Scripts/python scripts/train_qlora.py --source mimic --base <models>/Qwen3-8B
+.venv-train/Scripts/python scripts/export_ollama.py --base <models>/Qwen3-8B --adapter <MIMIC_WORK_DIR>/models/Qwen3-8B-extractor-mimic/adapter
+.venv-train/Scripts/python scripts/export_ollama.py --base <models>/Qwen3-8B --name qwen3-8b-local --out <models>/qwen3-8b-gguf   # control
 uv run python -m ctagent mimic-bench --mode zero --model ctagent-extractor
 uv run python -m ctagent extract-bench --mode zero --model ctagent-extractor
-.venv-train/Scripts/python scripts/teacher_label.py --base C:/Users/Thiago/models/Qwen3-8B --n-train 2500 --n-val 300   # option C, resumable
-.venv-train/Scripts/python scripts/train_qlora.py --source mimic --base C:/Users/Thiago/models/Qwen3-8B --teacher-dir <MIMIC_WORK_DIR>/teacher --labels teacher --max-train 2500   # --labels silver: control
+.venv-train/Scripts/python scripts/teacher_label.py --base <models>/Qwen3-8B --n-train 2500 --n-val 300   # option C, resumable
+.venv-train/Scripts/python scripts/train_qlora.py --source mimic --base <models>/Qwen3-8B --teacher-dir <MIMIC_WORK_DIR>/teacher --labels teacher --max-train 2500   # --labels silver: control
 ```
