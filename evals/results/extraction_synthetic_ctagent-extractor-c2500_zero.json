@@ -3,8 +3,9 @@
   "mode": "zero",
   "model": "ctagent-extractor-c2500",
   "n_test": 107,
+  "rescored": false,
   "schema_failures": 0,
-  "seconds_per_note": 3.498361299999989,
+  "seconds_per_note": 3.9046072542056276,
   "n": 107,
   "exact": {
     "principal_diagnosis": {

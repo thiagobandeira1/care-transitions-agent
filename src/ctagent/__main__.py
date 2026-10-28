@@ -4,7 +4,7 @@ python -m ctagent cohort                        # Synthea cohort, LACE distribut
 python -m ctagent bench --model qwen3:14b [--cpu]  # drafting latency + grounding (Synthea)
 python -m ctagent daily --date 2024-03-22          # check-ins due today (tracking DB)
 python -m ctagent make-benchmark --n 150           # synthetic notes with known answers
-python -m ctagent extract-bench --mode zero|few|rules [--model qwen3:8b]
+python -m ctagent extract-bench --mode zero|few|rules [--model qwen3:8b] [--rescore]
 python -m ctagent mimic-prep                       # local only; prints aggregates
 python -m ctagent gold-export --n 200 --overlap 50 / gold-check   # local annotation
 python -m ctagent mimic-bench --mode zero|few --model qwen3:8b [--ref gold] [--limit 5] [--rescore]
@@ -160,7 +160,7 @@ def main(argv: list[str] | None = None) -> None:
         from .benchmark import score
 
         model = None if args.mode == "rules" else args.model
-        print(json.dumps(score(args.mode, model), indent=2))
+        print(json.dumps(score(args.mode, model, rescore=args.rescore), indent=2))
     else:
         cmd_daily(args.db, args.date)
 

@@ -1,6 +1,6 @@
 # Model card: ctagent-extractor (fine-tuned discharge-summary extractor)
 
-_2026-10-27. The weights are not distributed. They were trained on MIMIC-IV-Note, whose data use agreement
+_2026-10-28. The weights are not distributed. They were trained on MIMIC-IV-Note, whose data use agreement
 forbids sharing data or derived models outside credentialed access. They stay on the training machine._
 
 Four variants exist, all Qwen3-8B with the same method. They differ only in the training labels and the number
@@ -43,16 +43,18 @@ the zero-shot extractor (`src/ctagent/extractor.py`), and is meant to feed the a
 
 | Benchmark | Base 8b, same export (control) | Base 8b, few-shot | 14b few-shot (teacher) | v0 (silver, 8,851) | **c2500** |
 |---|---|---|---|---|---|
-| Synthetic, 107 notes with known answers | 0.949 (0.937-0.961) | 0.965 (0.955-0.974) | 0.979 (0.970-0.987) | 0.788 (0.768-0.812) | **0.948** (0.934-0.961) |
-| MIMIC, 200 gold-set notes, against silver | 0.563 (0.529-0.598) | 0.630 (0.594-0.664) | 0.631 (0.597-0.665) | 0.958 (0.941-0.972) | **0.778** (0.705-0.830) |
+| Synthetic, 107 notes with known answers | 0.948 (0.935-0.960) | 0.966 (0.956-0.974) | 0.979 (0.970-0.987) | 0.789 (0.766-0.812) | **0.948** (0.934-0.961) |
+| MIMIC, 200 gold-set notes, against silver | 0.567 (0.532-0.602) | 0.638 (0.602-0.672) | 0.632 (0.597-0.666) | 0.959 (0.942-0.973) | **0.808** (0.782-0.834) |
 
-c2500's MIMIC score is 0.808 with exact duplicate list items removed (Limitations). Per-field results, the
+All scores use extraction schema 1.3, which drops repeated list items (Limitations). Per-field results, the
 controls and the learning curve are in `PROGRESS.md` (Findings 1 and 2) and `evals/results/`. Scores against
 the hand-annotated gold set are pending annotation.
 
 ## Limitations
 - **Repetition loops (option C models).** On a few MIMIC notes the 2,500-note models repeat one list item
-  hundreds of times. The output still parses as valid JSON. Drop exact duplicate items before using the output.
+  hundreds of times, in output that still parses as valid JSON. The extraction schema (1.3) drops the repeats
+  when the output is validated, so scores and the agent are not affected. A loop still costs generation time,
+  up to the answer cap.
 - **v0 copies the silver labels, gaps included.** It never extracts follow-up appointments, and it misses most
   pending tests and many red flags (synthetic follow-up F1 0.06, against 0.77 for the base model). c2500 fixes
   this on synthetic notes (follow-up 0.80, pending tests 0.91, red flags 0.98).

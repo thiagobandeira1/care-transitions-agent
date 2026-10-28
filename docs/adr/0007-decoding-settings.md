@@ -37,6 +37,13 @@ The same gap applied to extraction: "include continued medications" was not in t
   then flagged for a human (ADR 0002). The check runs after decoding, so text is never cut off silently.
 - Retry errors keep the end of the message, where the validator states its reason.
 
+## Update (2026-10-28): looping in extraction
+Extraction on MIMIC did loop: the smaller option C fine-tunes sometimes repeated one list item hundreds of
+times in otherwise valid JSON (PROGRESS.md, Finding 2). Extraction stays greedy, so scores stay repeatable.
+Instead, extraction schema 1.3 drops repeated list items (ignoring case and spacing) when an extraction is
+validated. A repeat is dropped rather than failing validation, as it does in drafting, because the rest of
+the answer is still usable, and a retry under greedy decoding would repeat the same answer.
+
 ## Consequences
 Drafts differ from run to run unless the seed and call order match. Drafting latency and flag counts, and the
 LLM extraction results, were re-measured after this change; PROGRESS.md has the numbers. Earlier drafting

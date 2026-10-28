@@ -57,3 +57,17 @@ def test_build_and_score_all_modes(bench_env: Path, tmp_path: Path) -> None:
     assert zero["model"] == "qwen3:8b"
     assert (tmp_path / "evals" / "results" / "extraction_synthetic_qwen3-8b_few.json").exists()
     assert (tmp_path / "evals" / "results" / "extraction_synthetic_rules.json").exists()
+
+
+def test_rescore_scores_saved_predictions_without_the_model(
+    bench_env: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bm.build(bench_env, n=6, model="qwen3:14b", train_frac=0.5)
+    with pytest.raises(ValueError, match="run without --rescore"):
+        bm.score("zero", "qwen3:8b", rescore=True)
+    first = bm.score("zero", "qwen3:8b")
+    assert (tmp_path / "outputs" / "preds" / "synthetic_qwen3-8b_zero.jsonl").exists()
+    monkeypatch.setattr(bm, "OllamaLLM", None)  # a model call would now fail
+    again = bm.score("zero", "qwen3:8b", rescore=True)
+    assert again["rescored"] and not first["rescored"]
+    assert again["relaxed"] == first["relaxed"] and again["schema_failures"] == 0

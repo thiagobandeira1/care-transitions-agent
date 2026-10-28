@@ -2,13 +2,14 @@
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .models import MedChangeType
 
 # 1.1: every top-level key is required in the JSON schema (same instances as 1.0)
 # 1.2: every field has a description, and the prompt shows them (same instances)
-SCHEMA_VERSION = "1.2"
+# 1.3: repeated list items are dropped on validation (same JSON schema and prompt)
+SCHEMA_VERSION = "1.3"
 
 
 class Diagnosis(BaseModel):
@@ -30,6 +31,12 @@ class FollowUp(BaseModel):
 
 def _require_every_key(schema: dict[str, Any]) -> None:
     schema["required"] = list(schema.get("properties", {}))
+
+
+def _key(item: BaseModel | str) -> str:
+    """Items that differ only in case or spacing are the same item."""
+    text = item.model_dump_json() if isinstance(item, BaseModel) else item
+    return " ".join(text.casefold().split())
 
 
 class DischargeExtraction(BaseModel):
@@ -56,3 +63,20 @@ class DischargeExtraction(BaseModel):
         default=[], description="Tests or results still pending at discharge"
     )
     red_flags: list[str] = Field(default=[], description="Symptoms that should prompt a call or ER")
+
+    @field_validator(
+        "secondary_diagnoses", "medication_changes", "follow_up", "pending_tests", "red_flags"
+    )
+    @classmethod
+    def _drop_repeats(cls, items: list[Any]) -> list[Any]:
+        """Keep the first of repeated items: a list field is a set, so a repeat is never right.
+
+        Small fine-tunes sometimes repeat one item hundreds of times in otherwise valid JSON.
+        """
+        seen: set[str] = set()
+        kept = []
+        for item in items:
+            if _key(item) not in seen:
+                seen.add(_key(item))
+                kept.append(item)
+        return kept

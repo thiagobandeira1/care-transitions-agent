@@ -92,14 +92,12 @@ def bootstrap(
     }
 
 
-def score(mode: str, model: str | None = None, k_shots: int = 3, seed: int = 5) -> dict[str, Any]:
-    """mode: 'rules' (silver-label rules), 'zero' or 'few' (local model)."""
-    test = load("test")
-    refs = [DischargeExtraction.model_validate(x["reference"]) for x in test]
-    t0, failures = time.perf_counter(), 0
-    if mode == "rules":
-        preds: list[DischargeExtraction | None] = [silver_labels(x["note"]) for x in test]
-    else:
+def predict(
+    mode: str, model: str | None, test: list[dict[str, Any]], k_shots: int, seed: int
+) -> list[dict[str, Any]]:
+    """One row per test note: id, seconds and the prediction (None on a schema failure)."""
+    ext: Extractor | None = None
+    if mode != "rules":
         assert model is not None
         shots: list[Example] = []
         if mode == "few":
@@ -109,12 +107,40 @@ def score(mode: str, model: str | None = None, k_shots: int = 3, seed: int = 5) 
                 Example(x["note"], DischargeExtraction.model_validate(x["reference"])) for x in pick
             ]
         ext = Extractor(OllamaLLM(model, num_ctx=16384), shots)
-        preds = []
-        for i, x in enumerate(test):
-            r = ext.run(x["note"])
-            failures += r.value is None
-            preds.append(r.value)
+    rows = []
+    for i, x in enumerate(test):
+        t0 = time.perf_counter()
+        pred = silver_labels(x["note"]) if ext is None else ext.run(x["note"]).value
+        seconds = time.perf_counter() - t0
+        dump = pred.model_dump(mode="json") if pred else None
+        rows.append({"id": x["id"], "seconds": seconds, "pred": dump})
+        if ext is not None:
             print(f"  {mode} {i + 1}/{len(test)}", flush=True)
+    return rows
+
+
+def score(
+    mode: str, model: str | None = None, k_shots: int = 3, seed: int = 5, rescore: bool = False
+) -> dict[str, Any]:
+    """mode: 'rules' (silver-label rules), 'zero' or 'few' (local model).
+
+    Predictions are saved under outputs/preds/ (not committed). `rescore` scores them again
+    without calling the model, e.g. after a change to the schema's validation.
+    """
+    test = load("test")
+    refs = [DischargeExtraction.model_validate(x["reference"]) for x in test]
+    tag = mode if model is None else f"{model.replace(':', '-')}_{mode}"
+    saved = REPO / "outputs" / "preds" / f"synthetic_{tag}.jsonl"
+    if rescore:
+        if not saved.exists():
+            raise ValueError(f"no saved predictions at {saved.name}; run without --rescore first")
+        by_id = {r["id"]: r for r in map(json.loads, saved.read_text().splitlines())}
+        rows = [by_id[x["id"]] for x in test]
+    else:
+        rows = predict(mode, model, test, k_shots, seed)
+        saved.parent.mkdir(parents=True, exist_ok=True)
+        saved.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    preds = [DischargeExtraction.model_validate(r["pred"]) if r["pred"] else None for r in rows]
     pairs = list(zip(preds, refs, strict=True))
     rep: Report = evaluate(pairs)
     result = {
@@ -122,13 +148,13 @@ def score(mode: str, model: str | None = None, k_shots: int = 3, seed: int = 5) 
         "mode": mode,
         "model": model,
         "n_test": len(test),
-        "schema_failures": failures,
-        "seconds_per_note": (time.perf_counter() - t0) / max(len(test), 1),
+        "rescored": rescore,
+        "schema_failures": sum(p is None for p in preds),
+        "seconds_per_note": sum(r["seconds"] for r in rows) / max(len(rows), 1),
         **rep.summary(),
         "relaxed_f1_ci95": bootstrap(pairs),
     }
     out = REPO / "evals" / "results"
     out.mkdir(parents=True, exist_ok=True)
-    tag = mode if model is None else f"{model.replace(':', '-')}_{mode}"
     (out / f"extraction_synthetic_{tag}.json").write_text(json.dumps(result, indent=2))
     return result

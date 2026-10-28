@@ -30,11 +30,11 @@ themselves as a baseline, shows whether it learned more than the rules. That com
   (option B, decided by Thiago on 2026-10-26). Billing titles would have taught the model to write billing
   titles.
 - **The expected bias is confirmed, and it is large.** The first run (silver labels only, 8,851 train notes)
-  reproduces silver almost exactly: 0.958 micro F1 against silver on the 200 gold-set notes, with per-note
+  reproduces silver almost exactly: 0.959 micro F1 against silver on the 200 gold-set notes, with per-note
   item counts matching silver's. It also learned silver's blind spots. Silver has no follow-ups (MIMIC redacts
   that section), so the model never outputs one. On the public synthetic notes, where every field has a
-  known answer, micro F1 fell from 0.947 (base 8b, zero-shot) to 0.788: follow-up 0.776 → 0.057, pending
-  tests 0.944 → 0.592, red flags 0.994 → 0.679.
+  known answer, micro F1 fell from 0.947 (base 8b, zero-shot) to 0.789: follow-up 0.776 → 0.057, pending
+  tests 0.944 → 0.604, red flags 0.994 → 0.679.
 - **Consequence:** labels for the weak fields (follow-up, pending tests, red flags) must improve before a
   fine-tuned model replaces the few-shot extractor in the agent. Option C (a 14b few-shot teacher for those
   fields, silver for diagnoses and medications) is the leading candidate. This run stays in paper 2 as the
@@ -49,14 +49,16 @@ themselves as a baseline, shows whether it learned more than the rules. That com
 - **Option C result (2026-10-27):**
   - **Synthetic notes:** teacher labels brought the weak fields back. On the same 2,500 notes, micro F1 is
     0.948 with teacher labels and 0.842 with silver. Follow-up rose from 0.19 to 0.80, and pending tests from
-    0.60 to 0.91. c2500 matches the base 8b zero-shot (0.949) and trails its 14b teacher (0.979).
+    0.61 to 0.91. c2500 matches the base 8b zero-shot (0.948) and trails its 14b teacher (0.979).
   - **Learning curve:** halving the notes (c1250) changes micro F1 by 0.001, so more notes from the same
     teacher are not the bottleneck.
-  - **MIMIC:** the 2,500-note models sometimes repeat one list item hundreds of times, and those loops drive
-    their raw MIMIC scores. With exact duplicates removed, c2500 keeps silver-level diagnoses (0.987 / 0.968)
-    and medications (0.912). On the weak fields it agrees with silver as little as its teacher does.
-  - **Consequence:** c2500 is the candidate fine-tuned arm for paper 2. Before any agent use, the extractor
-    must drop duplicate list items. Gold decides teacher vs rules on the weak fields.
+  - **MIMIC:** the 2,500-note models sometimes repeated one list item hundreds of times, and those loops
+    drove their first MIMIC scores down. Extraction schema 1.3 (2026-10-28) drops repeated list items on
+    validation, for every model, and all saved predictions were rescored. c2500 then scores 0.808 against
+    silver (it was 0.778), with silver-level diagnoses (0.987 / 0.967) and medications (0.912). On the weak
+    fields it agrees with silver as little as its teacher does.
+  - **Consequence:** c2500 is the candidate fine-tuned arm for paper 2. Gold decides teacher vs rules on the
+    weak fields, and until then the few-shot extractor stays the agent's default.
 - **Gold agreement without a second annotator:** this is not an FIU project. The 50-note overlap needs a second
   PhysioNet-credentialed annotator, or else a second pass by the same annotator at least two weeks later,
   reported as intra-annotator agreement.

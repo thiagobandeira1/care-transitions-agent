@@ -3,8 +3,9 @@
   "mode": "zero",
   "model": "qwen3:8b",
   "n_test": 107,
+  "rescored": false,
   "schema_failures": 0,
-  "seconds_per_note": 5.435744351401673,
+  "seconds_per_note": 5.647541547663525,
   "n": 107,
   "exact": {
     "principal_diagnosis": {

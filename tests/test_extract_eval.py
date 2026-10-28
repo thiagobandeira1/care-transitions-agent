@@ -80,3 +80,21 @@ def test_schema_makes_the_model_emit_every_field() -> None:
     schema = DischargeExtraction.model_json_schema()
     assert schema["required"] == list(DischargeExtraction.model_fields)
     assert DischargeExtraction(principal_diagnosis=None).follow_up == []  # defaults still work
+
+
+def test_repeated_list_items_are_dropped() -> None:
+    looped = REF.model_dump(mode="json") | {
+        "red_flags": ["chest pain", "Chest  pain", "fever", *["chest pain"] * 500],
+        "secondary_diagnoses": [
+            {"text": "CKD"},
+            {"text": "ckd"},
+            {"text": "CKD", "icd10": "N18.9"},
+        ],
+        "medication_changes": [{"name": "aspirin", "change": "stopped"}] * 2
+        + [{"name": "aspirin", "change": "started"}],
+    }
+    x = DischargeExtraction.model_validate(looped)
+    assert x.red_flags == ["chest pain", "fever"]
+    assert [d.icd10 for d in x.secondary_diagnoses] == [None, "N18.9"]  # another code: kept
+    assert [m.change for m in x.medication_changes] == [T.STOPPED, T.STARTED]
+    assert evaluate([(x, REF)]).summary()["relaxed"]["red_flags"]["precision"] == 0.5  # type: ignore[index]

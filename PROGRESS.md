@@ -1,7 +1,7 @@
 # Progress: care-transitions-agent (Stage 4)
 
-_Last updated: 2026-10-27, ~10 PM, after the option C run finished (teacher labels for the weak fields). Local
-commits only; nothing is pushed to GitHub yet. The M5 to M8 sections report MIMIC aggregates only (counts, rates,
+_Last updated: 2026-10-28, ~12:30 AM, after repeated list items started being dropped (extraction schema 1.3)
+and every model was scored again. Local commits only; nothing is pushed to GitHub yet. The M5 to M8 sections report MIMIC aggregates only (counts, rates,
 length quantiles, metrics). Every other number is from synthetic data (Synthea
 and notes generated from it). None of it is MMC data._
 
@@ -18,16 +18,16 @@ and notes generated from it). None of it is MMC data._
 | M7 QLoRA fine-tune | ✅ done: Qwen3-8B, 1 epoch on 8,851 MIMIC train notes with silver labels, 4.4 h, eval loss 0.0136 |
 | M8 GGUF/Ollama export + evaluation | ✅ done: Q4_K_M GGUF via llama.cpp, in Ollama as `ctagent-extractor`; scored on 200 MIMIC and 107 synthetic notes with a matched control (below) |
 | M9 review screen and demo | ✅ smoke-tested on 5 synthetic discharges (queue, drafts, approve) |
-| Option C: teacher labels for the weak fields | ✅ done: 3 fine-tunes (c2500, s2500 control, c1250) on 14b-labeled notes; weak fields recovered on synthetic, repetition loops found on MIMIC (Finding 2) |
+| Option C: teacher labels for the weak fields | ✅ done: 3 fine-tunes (c2500, s2500 control, c1250) on 14b-labeled notes; weak fields recovered on synthetic; repetition loops found on MIMIC and fixed by dropping repeated list items (Finding 2) |
 
 ## Finding 1 (M7): the fine-tuned model copies its training labels, blind spots included
 The fine-tune worked mechanically: no schema failures, 4.5 s per note (about half the base model's time), and
-0.958 micro F1 against the silver labels on the 200 gold-set notes, against 0.563 for the same base model
+0.959 micro F1 against the silver labels on the 200 gold-set notes, against 0.567 for the same base model
 exported the same way. But silver is what it learned to reproduce, gaps included:
 - **Silver has no follow-ups** (MIMIC redacts that section), so the fine-tuned model never outputs one, in 0 of
   200 notes. The base model found about one per note.
-- **On the public synthetic notes,** where every field has a known answer, micro F1 fell from 0.949 (control)
-  to 0.788. Follow-up fell from 0.773 to 0.057, pending tests from 0.958 to 0.592, and red flags from 0.994 to
+- **On the public synthetic notes,** where every field has a known answer, micro F1 fell from 0.948 (control)
+  to 0.789. Follow-up fell from 0.771 to 0.057, pending tests from 0.958 to 0.604, and red flags from 0.994 to
   0.679. Only the principal diagnosis improved (0.939 → 1.000).
 - **Diagnoses and medications are where silver is good,** and there the fine-tune lifted the 8b model from
   0.63-0.92 to 0.98-1.00 against silver. If the gold set confirms silver on those fields, that part is a real
@@ -43,63 +43,76 @@ the base models for reference:
 
 | Model | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | Med change type acc. | s / note (GPU) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| qwen3-8b-local zero-shot (control) | 0.939 | 0.982 | 0.963 | 0.773 | 0.958 | 0.994 | **0.949** (0.937-0.961) | 0.883 | 1.00 | 5.2 |
-| qwen3:8b few-shot (3) | 0.925 | 0.979 | 0.983 | 0.856 | 0.957 | 0.994 | **0.965** (0.955-0.974) | 0.941 | 1.00 | 5.8 |
-| qwen3:14b few-shot (3), the teacher | 0.935 | 0.981 | 0.981 | 0.981 | 0.943 | 0.994 | **0.979** (0.970-0.987) | 0.969 | 0.99 | 9.5 |
-| M7: silver, 8,851 notes | 1.000 | 0.964 | 0.919 | 0.057 | 0.592 | 0.679 | **0.788** (0.768-0.812) | 0.758 | 0.96 | 3.6 |
-| s2500: silver, 2,500 notes (control) | 1.000 | 0.963 | 0.942 | 0.190 | 0.604 | 0.902 | **0.842** (0.822-0.861) | 0.800 | 0.98 | 3.6 |
-| c1250: silver + teacher, 1,250 notes | 1.000 | 0.995 | 0.975 | 0.752 | 0.892 | 0.960 | **0.949** (0.938-0.960) | 0.879 | 0.99 | 3.5 |
-| **c2500: silver + teacher, 2,500 notes** | 1.000 | 0.995 | 0.949 | 0.797 | 0.905 | 0.978 | **0.948** (0.934-0.961) | 0.875 | 0.98 | 3.5 |
+| qwen3-8b-local zero-shot (control) | 0.939 | 0.982 | 0.961 | 0.771 | 0.958 | 0.994 | **0.948** (0.935-0.960) | 0.882 | 1.00 | 5.4 |
+| qwen3:8b few-shot (3) | 0.925 | 0.979 | 0.983 | 0.856 | 0.972 | 0.994 | **0.966** (0.956-0.974) | 0.941 | 1.00 | 5.8 |
+| qwen3:14b few-shot (3), the teacher | 0.935 | 0.981 | 0.981 | 0.981 | 0.928 | 0.994 | **0.979** (0.970-0.987) | 0.969 | 0.99 | 9.4 |
+| M7: silver, 8,851 notes | 1.000 | 0.964 | 0.917 | 0.057 | 0.604 | 0.679 | **0.789** (0.766-0.812) | 0.758 | 0.96 | 3.8 |
+| s2500: silver, 2,500 notes (control) | 1.000 | 0.963 | 0.942 | 0.190 | 0.609 | 0.902 | **0.842** (0.822-0.861) | 0.800 | 0.98 | 4.0 |
+| c1250: silver + teacher, 1,250 notes | 1.000 | 0.995 | 0.975 | 0.752 | 0.892 | 0.960 | **0.949** (0.938-0.960) | 0.879 | 0.99 | 3.8 |
+| **c2500: silver + teacher, 2,500 notes** | 1.000 | 0.995 | 0.949 | 0.797 | 0.905 | 0.978 | **0.948** (0.934-0.961) | 0.875 | 0.98 | 3.9 |
+
+Every row was run again with extraction schema 1.3, which drops repeated list items (MIMIC, below). The
+synthetic predictions from the first runs were not saved, so this was a rerun, not a rescore. c1250, c2500,
+the rules and the library 8b and 14b zero-shot runs (M4) reproduced their first scores exactly. The other rows moved by at
+most 0.015 on one field and 0.001 in micro F1. The fine-tunes were about 0.3 s per note slower, because the
+MIMIC rescore was using the CPU at the same time.
 
 - **The label source is the cause.** On the same 2,500 notes, teacher labels give 0.948 and silver gives 0.842.
-  Follow-up rises from 0.19 to 0.80, pending tests from 0.60 to 0.91 and red flags from 0.90 to 0.98.
-- **c2500 matches the base model overall** (0.948 vs 0.949) and keeps the fine-tune's edge on diagnoses
-  (principal 1.000 vs 0.939, secondary 0.995 vs 0.982). It stays below 8b few-shot (0.965) and its 14b teacher
+  Follow-up rises from 0.19 to 0.80, pending tests from 0.61 to 0.91 and red flags from 0.90 to 0.98.
+- **c2500 matches the base model overall** (0.948 for both) and keeps the fine-tune's edge on diagnoses
+  (principal 1.000 vs 0.939, secondary 0.995 vs 0.982). It stays below 8b few-shot (0.966) and its 14b teacher
   (0.979), mostly on follow-up (0.80 vs 0.86 and 0.98). A student is expected to trail its teacher.
 - **More notes help little.** c1250 → c2500 leaves micro F1 unchanged (0.949 vs 0.948). The weak fields gain
   2-5 points (follow-up 0.75 → 0.80, red flags 0.96 → 0.98). Labeling 2,500 more notes (about 8 GPU hours)
   is not worth it before the gold set says whether the teacher is right on MIMIC.
-- **It is fast:** 3.5 s per synthetic note and 4.9 s per MIMIC note, about 2.8 times faster than the 14b
-  teacher (9.5 and 13.5 s), with no examples in the prompt.
+- **It is fast:** 3.9 s per synthetic note and 4.9 s per MIMIC note, 2.4-2.8 times faster than the 14b
+  teacher (9.4 and 13.5 s), with no examples in the prompt.
 
-**MIMIC (200 gold-set notes, against silver).** Raw scores:
+**MIMIC (200 gold-set notes, against silver).** Scored with repeated list items dropped (schema 1.3, below):
 
 | Model | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | Med change type acc. | s / note (GPU) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| M7: silver, 8,851 notes | 0.995 | 0.997 | 0.980 | 0.000 | 0.496 | 0.669 | **0.958** (0.941-0.972) | 0.955 | 0.99 | 4.5 |
-| s2500: silver, 2,500 notes | 0.995 | 0.990 | 0.913 | 0.000 | 0.022 | 0.449 | **0.664** (0.502-0.882) | 0.658 | 0.96 | 4.7 |
-| c1250: silver + teacher, 1,250 notes | 0.982 | 0.745 | 0.828 | 0.000 | 0.067 | 0.066 | **0.688** (0.611-0.765) | 0.666 | 0.92 | 5.3 |
-| **c2500: silver + teacher, 2,500 notes** | 0.987 | 0.758 | 0.912 | 0.000 | 0.096 | 0.098 | **0.778** (0.705-0.830) | 0.762 | 0.95 | 4.9 |
+| qwen3:14b few-shot (3), the teacher | 0.932 | 0.776 | 0.685 | 0.000 | 0.094 | 0.123 | **0.632** (0.597-0.666) | 0.552 | 0.78 | 13.5 |
+| M7: silver, 8,851 notes | 0.995 | 0.997 | 0.980 | 0.000 | 0.518 | 0.669 | **0.959** (0.942-0.973) | 0.956 | 0.99 | 4.5 |
+| s2500: silver, 2,500 notes | 0.995 | 0.993 | 0.926 | 0.000 | 0.331 | 0.449 | **0.890** (0.865-0.915) | 0.881 | 0.96 | 4.7 |
+| c1250: silver + teacher, 1,250 notes | 0.982 | 0.954 | 0.864 | 0.000 | 0.069 | 0.109 | **0.776** (0.745-0.804) | 0.751 | 0.92 | 5.3 |
+| **c2500: silver + teacher, 2,500 notes** | 0.987 | 0.967 | 0.912 | 0.000 | 0.099 | 0.098 | **0.808** (0.782-0.834) | 0.791 | 0.95 | 4.9 |
 
 c1250 and c2500 each had one schema failure (unparseable output) out of 200.
 
-**New problem: repetition loops.** On a few notes the 2,500-note models repeat one item many times. One s2500
-answer lists the same pending test 962 times, and c1250 and c2500 each list one secondary diagnosis 249 times.
-The JSON still parses, so nothing flagged it. M7, trained on 8,851 notes, repeated at most one item. The base 8b
+**Repetition loops, found and fixed.** On a few notes the 2,500-note models repeated one item many times. One
+s2500 answer listed the same pending test 962 times, and c1250 and c2500 each listed one secondary diagnosis
+249 times. The JSON still parsed, so nothing flagged it. A local script found them by counting items in the
+saved predictions (counts only, no text). M7, trained on 8,851 notes, repeated at most one item. The base 8b
 zero-shot also repeats (189 duplicate red flags), so this is not new to fine-tuning, but the smaller fine-tunes
-do it more. A local script counted duplicates in the saved predictions (counts only, no text). Removing exact
-duplicates gives:
+do it more.
 
-| Model, duplicates removed | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | Micro F1 |
-|---|---|---|---|---|---|---|---|
-| qwen3:14b few-shot (3), the teacher | 0.932 | 0.775 | 0.685 | 0.000 | 0.091 | 0.123 | 0.631 |
-| M7: silver, 8,851 notes | 0.995 | 0.996 | 0.980 | 0.000 | 0.496 | 0.669 | 0.958 |
-| s2500: silver, 2,500 notes | 0.995 | 0.992 | 0.926 | 0.000 | 0.321 | 0.449 | 0.889 |
-| c1250: silver + teacher, 1,250 notes | 0.982 | 0.955 | 0.864 | 0.000 | 0.067 | 0.109 | 0.776 |
-| **c2500: silver + teacher, 2,500 notes** | 0.987 | 0.968 | 0.912 | 0.000 | 0.096 | 0.098 | 0.808 |
+A list field is a set, so a repeated item is never right. Extraction schema 1.3 drops repeats (ignoring case
+and spacing) whenever an extraction is validated: for every model, in the agent and in the benchmarks, and in
+the reference labels too. The JSON schema and the prompt did not change, so the fine-tuned models still see
+their training prompt. The saved MIMIC predictions were rescored without calling the models (`--rescore`).
+Micro F1 before → after:
+- s2500: 0.664 → 0.890
+- c1250: 0.688 → 0.776
+- c2500: 0.778 → 0.808
+- 8b zero-shot: 0.546 → 0.566
+- every other model: up by 0.001-0.008
 
-- **Option C did not cost the diagnoses.** With duplicates removed, c2500 keeps silver-level principal and
-  secondary diagnoses (0.987 and 0.968). Medication changes (0.912) match the silver control on the same notes
-  (0.926). M7's 0.980 suggests medications are where more notes help.
+A loop still costs generation time up to the 3,000-token answer cap. A cap on items per list would bound that,
+but it is not needed for correctness.
+
+- **Option C did not cost the diagnoses.** c2500 keeps silver-level principal and secondary diagnoses (0.987
+  and 0.967). Medication changes (0.912) are close to the silver control on the same notes (0.926). M7's 0.980
+  suggests medications are where more notes help.
 - **On the weak fields c2500 learned its teacher, as intended.** It agrees with silver about as little as the
-  14b teacher does (pending tests 0.096 vs 0.091, red flags 0.098 vs 0.123). It lists 127 follow-ups on the 200
+  14b teacher does (pending tests 0.099 vs 0.094, red flags 0.098 vs 0.123). It lists 126 follow-ups on the 200
   notes, where silver has none. So MIMIC micro F1 against silver no longer ranks the arms on those fields. Only
   the gold set can say whether the teacher or the rules are right.
+- **Without the loops, the silver control looks strong against silver** (s2500 0.890, M7 0.959). That is the
+  imitation effect from Finding 1, not evidence that silver labels are better.
 
-**Next step for the model:** stop the loops before c2500 goes anywhere near the agent. A list field is a set, so
-a repeated item is never right. Remove exact duplicates when the extractor validates its output, for every
-model alike, then rescore the saved predictions. A cap on items per list would also bound the time a loop
-wastes. Until gold says otherwise, the few-shot extractor stays the agent's default.
+**Next step for the model:** c2500 is the candidate fine-tuned arm. Until gold says the teacher is right on
+MIMIC, the few-shot extractor stays the agent's default.
 
 ### How option C was run
 This is not an FIU project (Thiago, 2026-10-27), so it went ahead without waiting for co-authors.
@@ -205,15 +218,16 @@ Qwen3 non-thinking sampling with field guidance in the prompt.
 ### M4: extraction on the synthetic benchmark (107 test notes)
 Notes were written by qwen3:14b from Synthea records, and a note was kept only if it mentioned every reference
 fact. F1 with relaxed matching (token overlap ≥ 0.5); "micro" pools all fields; 95% CI from a 2,000-sample
-bootstrap. Greedy decoding, extraction schema 1.2 (field guidance in the prompt).
+bootstrap. Greedy decoding, extraction schema 1.3 (field guidance in the prompt; repeated list items dropped,
+Finding 2).
 
 | Mode | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | s / note (GPU) |
 |---|---|---|---|---|---|---|---|---|---|
 | Rules (no LLM) | 1.000 | 0.963 | 0.907 | 0.159 | 0.452 | 0.037 | **0.696** (0.675-0.716) | 0.654 | 0.0 |
 | qwen3:8b zero-shot | 0.953 | 0.986 | 0.954 | 0.776 | 0.944 | 0.994 | **0.947** (0.933-0.959) | 0.881 | 5.4 |
 | qwen3:14b zero-shot | 0.849 | 0.960 | 0.974 | 0.796 | 0.965 | 0.994 | **0.947** (0.935-0.958) | 0.886 | 9.0 |
-| qwen3:8b few-shot (3) | 0.925 | 0.979 | 0.983 | 0.856 | 0.957 | 0.994 | **0.965** (0.955-0.974) | 0.941 | 5.8 |
-| qwen3:14b few-shot (3) | 0.935 | 0.981 | 0.981 | 0.981 | 0.943 | 0.994 | **0.979** (0.970-0.987) | 0.969 | 9.5 |
+| qwen3:8b few-shot (3) | 0.925 | 0.979 | 0.983 | 0.856 | 0.972 | 0.994 | **0.966** (0.956-0.974) | 0.941 | 5.8 |
+| qwen3:14b few-shot (3) | 0.935 | 0.981 | 0.981 | 0.981 | 0.928 | 0.994 | **0.979** (0.970-0.987) | 0.969 | 9.4 |
 
 No schema failures in any mode. Medication change-type accuracy (among matched drugs) is 0.95 for rules and
 0.99-1.00 for every LLM mode. Timings are from one sequential run each and vary between runs (14b took
@@ -277,13 +291,15 @@ follow-up, pending tests and red flags. `mimic-bench --ref gold` reruns the comp
 
 | Mode | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | Med change type acc. | s / note (GPU) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| qwen3:8b zero-shot | 0.916 | 0.706 | 0.621 | 0.000 | 0.048 | 0.066 | **0.546** (0.493-0.592) | 0.460 | 0.72 | 7.2* |
-| qwen3:14b zero-shot | 0.869 | 0.658 | 0.670 | 0.000 | 0.043 | 0.069 | **0.568** (0.533-0.604) | 0.477 | 0.76 | 12.3 |
-| qwen3:8b few-shot (3) | 0.924 | 0.846 | 0.683 | 0.000 | 0.077 | 0.104 | **0.630** (0.594-0.664) | 0.547 | 0.77 | 9.1 |
-| qwen3:14b few-shot (3) | 0.932 | 0.775 | 0.685 | 0.000 | 0.091 | 0.123 | **0.631** (0.597-0.665) | 0.552 | 0.78 | 13.5 |
+| qwen3:8b zero-shot | 0.916 | 0.707 | 0.631 | 0.000 | 0.049 | 0.084 | **0.566** (0.530-0.602) | 0.477 | 0.72 | 7.2* |
+| qwen3:14b zero-shot | 0.869 | 0.659 | 0.671 | 0.000 | 0.043 | 0.069 | **0.569** (0.533-0.605) | 0.478 | 0.76 | 12.3 |
+| qwen3:8b few-shot (3) | 0.924 | 0.847 | 0.689 | 0.000 | 0.079 | 0.104 | **0.638** (0.602-0.672) | 0.554 | 0.77 | 9.1 |
+| qwen3:14b few-shot (3) | 0.932 | 0.776 | 0.685 | 0.000 | 0.094 | 0.123 | **0.632** (0.597-0.666) | 0.552 | 0.78 | 13.5 |
 
-The zero-shot rows are the original predictions scored again against the new labels (`--rescore`, no model
-calls), so their medication scores and timings are unchanged. The few-shot rows are new runs: examples are
+All four rows were rescored on 2026-10-28 with repeated list items dropped (schema 1.3, Finding 2). Micro F1
+rose by 0.001-0.008, except 8b zero-shot (0.546 → 0.566), which had repeated 189 red flags. The zero-shot
+rows are the original predictions scored again against the new labels (`--rescore`, no model calls), so their
+timings are unchanged. The few-shot rows are new runs: examples are
 picked by their silver labels, so the new labels picked different examples. One schema failure (8b zero-shot,
 after the retry); none in the other runs. \*Mean over notes 91-200: the first 90 shared the GPU with a stale run
 that was stopped (the full-run mean, 11.7 s, is in the results file).
@@ -291,24 +307,24 @@ that was stopped (the full-run mean, 11.7 s, is in the results file).
 What this shows:
 - **The models were right about diagnoses; the old reference was wrong.** Against billing-code titles, diagnosis
   F1 was 0.07-0.12 and micro F1 0.38-0.44 (in git history). Against the note's own Discharge Diagnosis
-  section, principal diagnosis is 0.87-0.93 and secondary 0.66-0.85, and micro F1 rises to 0.55-0.63. 14b
+  section, principal diagnosis is 0.87-0.93 and secondary 0.66-0.85, and micro F1 rises to 0.57-0.64. 14b
   zero-shot is again the weakest on the principal diagnosis (0.869), as in M4 (0.849).
-- **8b ties 14b with three examples and is 1.5x faster.** Few-shot micro F1 is 0.630 vs 0.631 at 9.1 vs 13.5 s
-  per note, and 8b has the best secondary-diagnosis score (0.846). This supports fine-tuning the 8b model.
-- **Medications remain the hard field with a fair reference:** F1 0.62-0.69 and change-type accuracy 0.72-0.78,
-  against 0.95-0.98 and 0.99-1.00 on the synthetic notes. Three examples help 8b (0.621 → 0.683). The new
-  examples gave 8b a slightly lower medication score than the old ones (0.683 vs 0.707; CIs 0.641-0.723 and
-  0.662-0.750), so the choice of examples moves results by a few points. The picker is deterministic, and the
+- **8b ties 14b with three examples and is 1.5x faster.** Few-shot micro F1 is 0.638 vs 0.632 at 9.1 vs 13.5 s
+  per note, and 8b has the best secondary-diagnosis score (0.847). This supports fine-tuning the 8b model.
+- **Medications remain the hard field with a fair reference:** F1 0.63-0.69 and change-type accuracy 0.72-0.78,
+  against 0.95-0.98 and 0.99-1.00 on the synthetic notes. Three examples help 8b (0.631 → 0.689). The new
+  examples gave 8b a slightly lower medication score than the old ones (0.689 vs 0.707, before repeats were
+  dropped; the CIs overlap), so the choice of examples moves results by a few points. The picker is deterministic, and the
   paper should say which examples it used.
 - **Follow-up, pending tests and red flags are still limited by the silver labels:**
   - Follow-up: MIMIC redacts Followup Instructions to `___`, so silver has none. Zero-shot models find about one
     follow-up per note elsewhere in the input, and every one counts as a false positive.
   - Red flags: the rules only take a list after phrases like "call your doctor", and 92.5% of notes get none.
-    The models list 2.6-3.8 per note.
-  - Pending tests: silver takes any sentence containing "pending" (0.41 per note). The models give 0.36-0.83.
+    The models list 2.6-3.6 per note.
+  - Pending tests: silver takes any sentence containing "pending" (0.39 per note). The models give 0.36-0.83.
 - **Few-shot examples teach the silver conventions as well as the task.** None of the 3 examples has a
   follow-up (they are redacted). With them, the share of notes with no follow-up rises from 10% to 55% (14b) and
-  from 47% to 73% (8b). 8b few-shot gives 2.2 secondary diagnoses per note, with 36.5% of notes having none, almost
+  from 47% to 72% (8b). 8b few-shot gives 2.2 secondary diagnoses per note, with 36% of notes having none, almost
   exactly silver's 2.25 and 36%. Part of the few-shot gain against silver comes from matching conventions; the
   gold set will tell how much.
 
@@ -407,38 +423,38 @@ MIMIC, 200 gold-set notes, silver labels (preliminary until the gold set is anno
 
 | Model | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | Med change type acc. | s / note (GPU) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| qwen3:8b zero-shot (Ollama library) | 0.916 | 0.706 | 0.621 | 0.000 | 0.048 | 0.066 | **0.546** (0.493-0.592) | 0.460 | 0.72 | 7.2* |
-| qwen3-8b-local zero-shot (control) | 0.922 | 0.723 | 0.628 | 0.000 | 0.058 | 0.083 | **0.563** (0.529-0.598) | 0.472 | 0.72 | 7.2 |
-| qwen3:8b few-shot (3) | 0.924 | 0.846 | 0.683 | 0.000 | 0.077 | 0.104 | **0.630** (0.594-0.664) | 0.547 | 0.77 | 9.1 |
-| qwen3:14b few-shot (3) | 0.932 | 0.775 | 0.685 | 0.000 | 0.091 | 0.123 | **0.631** (0.597-0.665) | 0.552 | 0.78 | 13.5 |
-| **ctagent-extractor (fine-tuned 8b)** | 0.995 | 0.997 | 0.980 | 0.000 | 0.496 | 0.669 | **0.958** (0.941-0.972) | 0.955 | 0.99 | 4.5 |
+| qwen3:8b zero-shot (Ollama library) | 0.916 | 0.707 | 0.631 | 0.000 | 0.049 | 0.084 | **0.566** (0.530-0.602) | 0.477 | 0.72 | 7.2* |
+| qwen3-8b-local zero-shot (control) | 0.922 | 0.723 | 0.628 | 0.000 | 0.059 | 0.083 | **0.567** (0.532-0.602) | 0.476 | 0.72 | 7.2 |
+| qwen3:8b few-shot (3) | 0.924 | 0.847 | 0.689 | 0.000 | 0.079 | 0.104 | **0.638** (0.602-0.672) | 0.554 | 0.77 | 9.1 |
+| qwen3:14b few-shot (3) | 0.932 | 0.776 | 0.685 | 0.000 | 0.094 | 0.123 | **0.632** (0.597-0.666) | 0.552 | 0.78 | 13.5 |
+| **ctagent-extractor (fine-tuned 8b)** | 0.995 | 0.997 | 0.980 | 0.000 | 0.518 | 0.669 | **0.959** (0.942-0.973) | 0.956 | 0.99 | 4.5 |
 
-\*As in M6: mean over notes 91-200.
+\*As in M6: mean over notes 91-200. Both tables use schema 1.3 (repeated list items dropped, Finding 2).
 
 Synthetic benchmark, 107 test notes with known answers:
 
 | Model | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | Med change type acc. | s / note (GPU) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | qwen3:8b zero-shot (Ollama library) | 0.953 | 0.986 | 0.954 | 0.776 | 0.944 | 0.994 | **0.947** (0.933-0.959) | 0.881 | 0.99 | 5.4 |
-| qwen3-8b-local zero-shot (control) | 0.939 | 0.982 | 0.963 | 0.773 | 0.958 | 0.994 | **0.949** (0.937-0.961) | 0.883 | 1.00 | 5.2 |
-| qwen3:8b few-shot (3) | 0.925 | 0.979 | 0.983 | 0.856 | 0.957 | 0.994 | **0.965** (0.955-0.974) | 0.941 | 1.00 | 5.8 |
-| qwen3:14b few-shot (3) | 0.935 | 0.981 | 0.981 | 0.981 | 0.943 | 0.994 | **0.979** (0.970-0.987) | 0.969 | 0.99 | 9.5 |
-| **ctagent-extractor (fine-tuned 8b)** | 1.000 | 0.964 | 0.919 | 0.057 | 0.592 | 0.679 | **0.788** (0.768-0.812) | 0.758 | 0.96 | 3.6 |
+| qwen3-8b-local zero-shot (control) | 0.939 | 0.982 | 0.961 | 0.771 | 0.958 | 0.994 | **0.948** (0.935-0.960) | 0.882 | 1.00 | 5.4 |
+| qwen3:8b few-shot (3) | 0.925 | 0.979 | 0.983 | 0.856 | 0.972 | 0.994 | **0.966** (0.956-0.974) | 0.941 | 1.00 | 5.8 |
+| qwen3:14b few-shot (3) | 0.935 | 0.981 | 0.981 | 0.981 | 0.928 | 0.994 | **0.979** (0.970-0.987) | 0.969 | 0.99 | 9.4 |
+| **ctagent-extractor (fine-tuned 8b)** | 1.000 | 0.964 | 0.917 | 0.057 | 0.604 | 0.679 | **0.789** (0.766-0.812) | 0.758 | 0.96 | 3.8 |
 
 What this shows:
 - **Against silver, the fine-tuned model is close to a copy of the rule-based labeler.** Its per-note item
   counts on the 200 notes match silver's: 2.25 secondary diagnoses per note with 36% of notes empty (silver:
   2.25 and 36%), 11.3 medication changes (silver: 11.3), and no follow-ups (silver: none). The zero-shot model
-  gives 2.7 secondary diagnoses with 22% empty, and about one follow-up per note. 0.958 measures imitation of
+  gives 2.7 secondary diagnoses with 22% empty, and about one follow-up per note. 0.959 measures imitation of
   the rules, not clinical correctness. The gold set measures that.
 - **It learned silver's blind spots.** It never outputs a follow-up, and it lists fewer pending tests than the
-  base model (0.17 per note vs 0.83; silver 0.41). On the synthetic notes, which state every field
+  base model (0.17 per note vs 0.83; silver 0.39). On the synthetic notes, which state every field
   explicitly, it lost most of the base model's skill on follow-up, pending tests and red flags. It still
   lists red flags on MIMIC more often than silver (1.06 per note vs 0.60), so it did not copy that rule
   exactly.
 - **It is faster:** 4.5 s per note on MIMIC against 7.2-9.1 s, since its answers are shorter and the prompt
   carries no examples.
-- **On diagnoses and medications it matches silver almost perfectly** (0.98-1.00, against 0.62-0.92 for the
+- **On diagnoses and medications it matches silver almost perfectly** (0.98-1.00, against 0.63-0.92 for the
   base model). Silver is a fair reference there, so this is probably a real gain, but only the gold set can
   confirm it.
 
@@ -468,7 +484,7 @@ Product notes from reading the drafts (for the pilot, not bugs):
    MIMIC DUA forbids showing notes to anyone else), or your own second pass on those 50 notes at least two
    weeks later, reported as intra-annotator agreement.
 3. **Publishing:** everything stays local until option C finishes and you say go (Thiago, 2026-10-27). Option C
-   is done; nothing is published until you say go. The repo contains no MIMIC data and nothing from MMC (only
+   is done and its numbers are final (rescored 2026-10-28); nothing is published until you say go. The repo contains no MIMIC data and nothing from MMC (only
    aggregate metrics in `evals/results/`), and the CI guard checks this. Publishing it also meets the MIMIC
    DUA's code-sharing clause once results are published.
 4. **Silver labels for M7:** decided (B) and done.
@@ -486,6 +502,7 @@ uv run python -m ctagent cohort
 uv run python -m ctagent bench --model qwen3:14b --n 30          # GPU; add --cpu for CPU-only
 uv run python -m ctagent make-benchmark --n 150
 uv run python -m ctagent extract-bench --mode few --model qwen3:8b
+uv run python -m ctagent extract-bench --mode few --model qwen3:8b --rescore   # rescore saved predictions
 uv run python -m ctagent demo --n 5                               # morning batch into data/demo
 uv run streamlit run app/review_app.py -- --workspace data/demo   # review screen
 uv run python -m ctagent mimic-prep                               # after the MIMIC download
