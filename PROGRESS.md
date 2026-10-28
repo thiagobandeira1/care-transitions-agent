@@ -486,8 +486,7 @@ Product notes from reading the drafts (for the pilot, not bugs):
    weeks later, reported as intra-annotator agreement.
 3. **Publishing:** done on 2026-10-28, after an audit, on Thiago's go. The audit checked every tracked file and
    the full history. It found no MIMIC data, nothing from MMC and no secrets, and no file was ever committed and
-   then deleted. Personal context was removed from the history, with commit dates kept. Local paths were
-   replaced with placeholders. The repo has aggregate metrics only (`evals/results/`), and the CI guard
+   then deleted. Local paths were replaced with placeholders. The repo has aggregate metrics only (`evals/results/`), and the CI guard
    checks this. Publishing also meets the MIMIC DUA's code-sharing clause once results are published.
 4. **Silver labels for M7:** decided (B) and done.
 5. **Labels for the next fine-tune:** option C is done (Finding 2). The gold set (item 2) now decides two open
