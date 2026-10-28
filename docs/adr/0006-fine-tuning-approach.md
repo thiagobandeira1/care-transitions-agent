@@ -46,6 +46,17 @@ themselves as a baseline, shows whether it learned more than the rules. That com
   2,500 gives about 600 notes with pending tests, the rarest weak field, and the first run's validation loss
   had mostly flattened by 5,000 examples. The student cannot beat its teacher on these fields, so teacher
   quality matters more than note count.
+- **Option C result (2026-10-27):**
+  - **Synthetic notes:** teacher labels brought the weak fields back. On the same 2,500 notes, micro F1 is
+    0.948 with teacher labels and 0.842 with silver. Follow-up rose from 0.19 to 0.80, and pending tests from
+    0.60 to 0.91. c2500 matches the base 8b zero-shot (0.949) and trails its 14b teacher (0.979).
+  - **Learning curve:** halving the notes (c1250) changes micro F1 by 0.001, so more notes from the same
+    teacher are not the bottleneck.
+  - **MIMIC:** the 2,500-note models sometimes repeat one list item hundreds of times, and those loops drive
+    their raw MIMIC scores. With exact duplicates removed, c2500 keeps silver-level diagnoses (0.987 / 0.968)
+    and medications (0.912). On the weak fields it agrees with silver as little as its teacher does.
+  - **Consequence:** c2500 is the candidate fine-tuned arm for paper 2. Before any agent use, the extractor
+    must drop duplicate list items. Gold decides teacher vs rules on the weak fields.
 - **Gold agreement without a second annotator:** this is not an FIU project. The 50-note overlap needs a second
   PhysioNet-credentialed annotator, or else a second pass by the same annotator at least two weeks later,
   reported as intra-annotator agreement.

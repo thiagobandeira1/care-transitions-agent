@@ -1,7 +1,7 @@
 # Progress: care-transitions-agent (Stage 4)
 
-_Last updated: 2026-10-27, ~7 AM, after starting the option C run (teacher labels for the weak fields). Local commits
-only; nothing is pushed to GitHub yet. The M5 to M8 sections report MIMIC aggregates only (counts, rates,
+_Last updated: 2026-10-27, ~10 PM, after the option C run finished (teacher labels for the weak fields). Local
+commits only; nothing is pushed to GitHub yet. The M5 to M8 sections report MIMIC aggregates only (counts, rates,
 length quantiles, metrics). Every other number is from synthetic data (Synthea
 and notes generated from it). None of it is MMC data._
 
@@ -18,8 +18,9 @@ and notes generated from it). None of it is MMC data._
 | M7 QLoRA fine-tune | ✅ done: Qwen3-8B, 1 epoch on 8,851 MIMIC train notes with silver labels, 4.4 h, eval loss 0.0136 |
 | M8 GGUF/Ollama export + evaluation | ✅ done: Q4_K_M GGUF via llama.cpp, in Ollama as `ctagent-extractor`; scored on 200 MIMIC and 107 synthetic notes with a matched control (below) |
 | M9 review screen and demo | ✅ smoke-tested on 5 synthetic discharges (queue, drafts, approve) |
+| Option C: teacher labels for the weak fields | ✅ done: 3 fine-tunes (c2500, s2500 control, c1250) on 14b-labeled notes; weak fields recovered on synthetic, repetition loops found on MIMIC (Finding 2) |
 
-## The main finding tonight: the fine-tuned model copies its training labels, blind spots included
+## Finding 1 (M7): the fine-tuned model copies its training labels, blind spots included
 The fine-tune worked mechanically: no schema failures, 4.5 s per note (about half the base model's time), and
 0.958 micro F1 against the silver labels on the 200 gold-set notes, against 0.563 for the same base model
 exported the same way. But silver is what it learned to reproduce, gaps included:
@@ -33,10 +34,74 @@ exported the same way. But silver is what it learned to reproduce, gaps included
   gain.
 
 So this model should not replace the few-shot extractor in the agent. The training labels for follow-up,
-pending tests and red flags have to improve first (option C, below). This run stays in paper 2 as the
+pending tests and red flags have to improve first (option C, Finding 2). This run stays in paper 2 as the
 silver-only arm, and ADR 0006 records the finding.
 
-## Option C: running (started 2026-10-27, ~7 AM)
+## Finding 2 (option C, 2026-10-27): teacher labels bring the weak fields back
+**Synthetic benchmark (107 test notes, every field has a known answer).** The three option C models, with M7 and
+the base models for reference:
+
+| Model | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | Med change type acc. | s / note (GPU) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| qwen3-8b-local zero-shot (control) | 0.939 | 0.982 | 0.963 | 0.773 | 0.958 | 0.994 | **0.949** (0.937-0.961) | 0.883 | 1.00 | 5.2 |
+| qwen3:8b few-shot (3) | 0.925 | 0.979 | 0.983 | 0.856 | 0.957 | 0.994 | **0.965** (0.955-0.974) | 0.941 | 1.00 | 5.8 |
+| qwen3:14b few-shot (3), the teacher | 0.935 | 0.981 | 0.981 | 0.981 | 0.943 | 0.994 | **0.979** (0.970-0.987) | 0.969 | 0.99 | 9.5 |
+| M7: silver, 8,851 notes | 1.000 | 0.964 | 0.919 | 0.057 | 0.592 | 0.679 | **0.788** (0.768-0.812) | 0.758 | 0.96 | 3.6 |
+| s2500: silver, 2,500 notes (control) | 1.000 | 0.963 | 0.942 | 0.190 | 0.604 | 0.902 | **0.842** (0.822-0.861) | 0.800 | 0.98 | 3.6 |
+| c1250: silver + teacher, 1,250 notes | 1.000 | 0.995 | 0.975 | 0.752 | 0.892 | 0.960 | **0.949** (0.938-0.960) | 0.879 | 0.99 | 3.5 |
+| **c2500: silver + teacher, 2,500 notes** | 1.000 | 0.995 | 0.949 | 0.797 | 0.905 | 0.978 | **0.948** (0.934-0.961) | 0.875 | 0.98 | 3.5 |
+
+- **The label source is the cause.** On the same 2,500 notes, teacher labels give 0.948 and silver gives 0.842.
+  Follow-up rises from 0.19 to 0.80, pending tests from 0.60 to 0.91 and red flags from 0.90 to 0.98.
+- **c2500 matches the base model overall** (0.948 vs 0.949) and keeps the fine-tune's edge on diagnoses
+  (principal 1.000 vs 0.939, secondary 0.995 vs 0.982). It stays below 8b few-shot (0.965) and its 14b teacher
+  (0.979), mostly on follow-up (0.80 vs 0.86 and 0.98). A student is expected to trail its teacher.
+- **More notes help little.** c1250 → c2500 leaves micro F1 unchanged (0.949 vs 0.948). The weak fields gain
+  2-5 points (follow-up 0.75 → 0.80, red flags 0.96 → 0.98). Labeling 2,500 more notes (about 8 GPU hours)
+  is not worth it before the gold set says whether the teacher is right on MIMIC.
+- **It is fast:** 3.5 s per synthetic note and 4.9 s per MIMIC note, about 2.8 times faster than the 14b
+  teacher (9.5 and 13.5 s), with no examples in the prompt.
+
+**MIMIC (200 gold-set notes, against silver).** Raw scores:
+
+| Model | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | Med change type acc. | s / note (GPU) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| M7: silver, 8,851 notes | 0.995 | 0.997 | 0.980 | 0.000 | 0.496 | 0.669 | **0.958** (0.941-0.972) | 0.955 | 0.99 | 4.5 |
+| s2500: silver, 2,500 notes | 0.995 | 0.990 | 0.913 | 0.000 | 0.022 | 0.449 | **0.664** (0.502-0.882) | 0.658 | 0.96 | 4.7 |
+| c1250: silver + teacher, 1,250 notes | 0.982 | 0.745 | 0.828 | 0.000 | 0.067 | 0.066 | **0.688** (0.611-0.765) | 0.666 | 0.92 | 5.3 |
+| **c2500: silver + teacher, 2,500 notes** | 0.987 | 0.758 | 0.912 | 0.000 | 0.096 | 0.098 | **0.778** (0.705-0.830) | 0.762 | 0.95 | 4.9 |
+
+c1250 and c2500 each had one schema failure (unparseable output) out of 200.
+
+**New problem: repetition loops.** On a few notes the 2,500-note models repeat one item many times. One s2500
+answer lists the same pending test 962 times, and c1250 and c2500 each list one secondary diagnosis 249 times.
+The JSON still parses, so nothing flagged it. M7, trained on 8,851 notes, repeated at most one item. The base 8b
+zero-shot also repeats (189 duplicate red flags), so this is not new to fine-tuning, but the smaller fine-tunes
+do it more. A local script counted duplicates in the saved predictions (counts only, no text). Removing exact
+duplicates gives:
+
+| Model, duplicates removed | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | Micro F1 |
+|---|---|---|---|---|---|---|---|
+| qwen3:14b few-shot (3), the teacher | 0.932 | 0.775 | 0.685 | 0.000 | 0.091 | 0.123 | 0.631 |
+| M7: silver, 8,851 notes | 0.995 | 0.996 | 0.980 | 0.000 | 0.496 | 0.669 | 0.958 |
+| s2500: silver, 2,500 notes | 0.995 | 0.992 | 0.926 | 0.000 | 0.321 | 0.449 | 0.889 |
+| c1250: silver + teacher, 1,250 notes | 0.982 | 0.955 | 0.864 | 0.000 | 0.067 | 0.109 | 0.776 |
+| **c2500: silver + teacher, 2,500 notes** | 0.987 | 0.968 | 0.912 | 0.000 | 0.096 | 0.098 | 0.808 |
+
+- **Option C did not cost the diagnoses.** With duplicates removed, c2500 keeps silver-level principal and
+  secondary diagnoses (0.987 and 0.968). Medication changes (0.912) match the silver control on the same notes
+  (0.926). M7's 0.980 suggests medications are where more notes help.
+- **On the weak fields c2500 learned its teacher, as intended.** It agrees with silver about as little as the
+  14b teacher does (pending tests 0.096 vs 0.091, red flags 0.098 vs 0.123). It lists 127 follow-ups on the 200
+  notes, where silver has none. So MIMIC micro F1 against silver no longer ranks the arms on those fields. Only
+  the gold set can say whether the teacher or the rules are right.
+
+**Next step for the model:** stop the loops before c2500 goes anywhere near the agent. A list field is a set, so
+a repeated item is never right. Remove exact duplicates when the extractor validates its output, for every
+model alike, then rescore the saved predictions. A cap on items per list would also bound the time a loop
+wastes. Until gold says otherwise, the few-shot extractor stays the agent's default.
+
+### How option C was run
 This is not an FIU project (Thiago, 2026-10-27), so it went ahead without waiting for co-authors.
 `scripts/teacher_label.py` has qwen3:14b, with the M6 few-shot prompt (3 train examples, seed 5), label
 follow-up, pending tests and red flags. Diagnoses and medication changes stay silver. Then three fine-tunes
@@ -50,6 +115,20 @@ use the same notes:
 
 The teacher also labels 300 validation notes for the eval loss. Each model is exported like M8 and scored on
 the 107 synthetic notes and the 200 MIMIC gold-set notes (against silver).
+
+**What it took:**
+- **Labeling:** 2,500 train and 300 validation notes, 11.2 s per note, 1 failure (skipped), about 9 GPU hours
+  including a restart.
+- **Teacher label rates on the 2,500 train notes:** follow-ups in 40% of notes (0.66 per note), pending tests
+  in 19% (0.30), red flags in 74% (2.2).
+- **Training:**
+  - c2500: 74 min, 2,498 examples (2 over 3,072 tokens)
+  - s2500: 71 min, 2,500 examples
+  - c1250: 37 min, 1,249 examples
+  - Peak GPU use was 10.5 GB.
+  - Final eval loss: 0.024 (c2500), 0.019 (s2500), 0.031 (c1250). The c and s losses are not comparable,
+    since their validation labels differ.
+- **Export and scoring:** about 25 minutes per model.
 
 **Why 2,500 notes:**
 - **Enough examples of the rarest field.** On the 200 gold-set notes the 14b teacher lists follow-ups in 46%
@@ -366,8 +445,8 @@ What this shows:
 **Next step for training: better labels for the weak fields** (option C). Train on silver diagnoses and
 medications plus 14b few-shot labels for follow-up, pending tests and red flags, then compare three arms on
 gold: few-shot, silver-only fine-tune (this run), and silver + teacher fine-tune. Labeling 10,000 train notes
-with 14b few-shot takes about 37 GPU hours at 13.5 s per note (or about 9 hours for 2,500 notes). Started on
-2,500 notes on 2026-10-27 (Option C section).
+with 14b few-shot takes about 37 GPU hours at 13.5 s per note (or about 9 hours for 2,500 notes). Done on
+2,500 notes on 2026-10-27 (Finding 2).
 
 ### M9: review screen smoke test
 `demo --n 5` processed 5 synthetic discharges to the review pause (1 high tier, 4 standard). In the Streamlit
@@ -388,13 +467,16 @@ Product notes from reading the drafts (for the pilot, not bugs):
    co-author, the 50-note overlap needs either a second annotator with their own PhysioNet credentialing (the
    MIMIC DUA forbids showing notes to anyone else), or your own second pass on those 50 notes at least two
    weeks later, reported as intra-annotator agreement.
-3. **Publishing:** the repo was to stay local until the MIMIC baselines (M6) were in (Thiago, 2026-10-26). They
-   are in. On your OK I'll create the public GitHub repo. It contains no MIMIC data and nothing from MMC (only
-   aggregate metrics in `evals/results/`); the CI guard checks this.
+3. **Publishing:** everything stays local until option C finishes and you say go (Thiago, 2026-10-27). Option C
+   is done; nothing is published until you say go. The repo contains no MIMIC data and nothing from MMC (only
+   aggregate metrics in `evals/results/`), and the CI guard checks this. Publishing it also meets the MIMIC
+   DUA's code-sharing clause once results are published.
 4. **Silver labels for M7:** decided (B) and done.
-5. **Labels for the next fine-tune:** option C is running on 2,500 notes (not an FIU project, so no wait). The
-   gold set (item 2) matters more now: it decides whether the fine-tune's gains on diagnoses and medications
-   are real, and whether the teacher or silver is right on the weak fields.
+5. **Labels for the next fine-tune:** option C is done (Finding 2). The gold set (item 2) now decides two open
+   questions: whether the fine-tune's gains on diagnoses and medications are real, and whether the teacher or
+   silver is right on follow-up, pending tests and red flags.
+6. **Next, agreed 2026-10-27:** the two papers. Paper 1 is MMC readmission, in the work session. Paper 2 is this
+   extraction comparison, built on gold.
 
 ## How to run
 ```
