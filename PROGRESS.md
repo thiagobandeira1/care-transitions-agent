@@ -1,7 +1,8 @@
 # Progress: care-transitions-agent (Stage 4)
 
 _Last updated: 2026-10-28, ~12:30 AM, after repeated list items started being dropped (extraction schema 1.3)
-and every model was scored again. Local commits only; nothing is pushed to GitHub yet. The M5 to M8 sections report MIMIC aggregates only (counts, rates,
+and every model was scored again. Published on 2026-10-28 at
+https://github.com/thiagobandeira1/care-transitions-agent (code, docs and aggregate metrics only). The M5 to M8 sections report MIMIC aggregates only (counts, rates,
 length quantiles, metrics). Every other number is from synthetic data (Synthea
 and notes generated from it). None of it is MMC data._
 
@@ -483,10 +484,11 @@ Product notes from reading the drafts (for the pilot, not bugs):
    co-author, the 50-note overlap needs either a second annotator with their own PhysioNet credentialing (the
    MIMIC DUA forbids showing notes to anyone else), or your own second pass on those 50 notes at least two
    weeks later, reported as intra-annotator agreement.
-3. **Publishing:** everything stays local until option C finishes and you say go (Thiago, 2026-10-27). Option C
-   is done and its numbers are final (rescored 2026-10-28); nothing is published until you say go. The repo contains no MIMIC data and nothing from MMC (only
-   aggregate metrics in `evals/results/`), and the CI guard checks this. Publishing it also meets the MIMIC
-   DUA's code-sharing clause once results are published.
+3. **Publishing:** done on 2026-10-28, after an audit, on Thiago's go. The audit checked every tracked file and
+   the full history. It found no MIMIC data, nothing from MMC and no secrets, and no file was ever committed and
+   then deleted. Personal context was removed from the history, with commit dates kept. Local paths were
+   replaced with placeholders. The repo has aggregate metrics only (`evals/results/`), and the CI guard
+   checks this. Publishing also meets the MIMIC DUA's code-sharing clause once results are published.
 4. **Silver labels for M7:** decided (B) and done.
 5. **Labels for the next fine-tune:** option C is done (Finding 2). The gold set (item 2) now decides two open
    questions: whether the fine-tune's gains on diagnoses and medications are real, and whether the teacher or
