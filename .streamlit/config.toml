@@ -1,0 +1,7 @@
+# The screens show patient-like data (MIMIC notes when annotating): serve them to this PC only,
+# never on the network. Streamlit reads this file when started from the repository root.
+[server]
+address = "localhost"
+
+[browser]
+gatherUsageStats = false
