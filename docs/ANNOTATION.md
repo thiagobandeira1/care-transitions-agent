@@ -7,12 +7,32 @@ tool, Claude included.
 
 ## Workflow
 1. `uv run python -m ctagent gold-export --n 200 --overlap 50` creates one folder per note with `input.txt` and
-   `prefill.json` (rule-based silver labels as a starting point).
-2. Copy `prefill.json` to `gold.json` and correct it while reading `input.txt`. Delete wrong items, add missed
-   ones, fix change types. Save as valid JSON.
-3. The second annotator (a co-author) does the same for the 50 `overlap` notes and writes `gold_b.json`.
+   `prefill.json` (rule-based silver labels as a starting point). Already done: the 200 folders exist.
+2. Open the annotation screen, which runs only on this PC:
+   ```
+   uv run streamlit run app/annotate_app.py
+   ```
+   - The note is on the left. "Find in note" lists the matching lines.
+   - The prefill is on the right, as editable tables. Delete wrong rows, add missed ones (the empty last row of
+     each table), and fix change types.
+   - **Save and next** checks the answer against the schema and writes `gold.json`. It records the minutes
+     spent and the save time, then opens the next note to do.
+   - You can stop at any time; saved notes reopen with your answers.
+3. **Second pass, for agreement:**
+   - There is no second annotator, so the same annotator redoes the 50 overlap notes (folders with an
+     `OVERLAP` file) and writes `gold_b.json`. In the screen, choose **Second pass**.
+   - Each overlap note opens 14 days after its first pass was saved. It starts again from the prefill, and the
+     screen never shows `gold.json`. Don't open it yourself either.
+   - Report the result as intra-annotator agreement. A second PhysioNet-credentialed annotator can use the same
+     screen instead and report inter-annotator agreement.
 4. `uv run python -m ctagent gold-check` validates every file against the schema and prints aggregate
-   agreement: silver vs gold, and annotator A vs B.
+   agreement: silver vs gold, and first vs second pass.
+
+To try the screen first, build a practice set from the synthetic notes:
+```
+uv run python -m ctagent gold-demo --n 10 --overlap 3
+uv run streamlit run app/annotate_app.py -- --gold-dir data/gold-demo
+```
 
 ## Field definitions
 | Field | Include | Exclude |
@@ -26,12 +46,13 @@ tool, Claude included.
 
 ## Rules
 - Copy wording from the note where possible; don't infer what isn't written.
-- The prefill's diagnoses are the hospital's billing-code titles (ICD-9 or ICD-10), not the note's wording.
-  Replace them with what Discharge Diagnosis says.
+- The prefill's diagnoses come from the note's Discharge Diagnosis section by simple rules: the first line is
+  the principal and the rest are secondary. Check the split and the wording against the note.
 - MIMIC-IV-Note redacts the Followup Instructions section to `___`, so the prefill has no follow-ups. Record
   follow-ups stated elsewhere in the input (discharge instructions, hospital course); leave the list empty if
   there are none.
 - If a field has nothing, leave the list empty (or `principal_diagnosis` null).
-- Record annotation time per note (optional, `minutes` key) to report the effort.
-- Disagreements between A and B are resolved by discussion after agreement is measured. The resolved file
-  becomes `gold.json`.
+- The screen records the time per note (`minutes`), so the effort can be reported.
+- `gold.json` (the first pass) is the reference for the models. The second pass only measures agreement. If
+  two annotators are used, disagreements are resolved by discussion after agreement is measured, and the
+  resolved file becomes `gold.json`.

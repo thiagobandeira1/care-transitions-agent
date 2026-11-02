@@ -63,6 +63,8 @@ uv run python -m ctagent demo --n 10                   # morning batch -> review
 uv run streamlit run app/review_app.py -- --workspace data/demo
 uv run python -m ctagent bench --model qwen3:14b [--cpu]
 uv run python -m ctagent extract-bench --mode few --model qwen3:8b
+uv run python -m ctagent gold-demo --n 10 --overlap 3     # synthetic practice set
+uv run streamlit run app/annotate_app.py -- --gold-dir data/gold-demo   # gold-set annotation screen
 ```
 
 Results live in `evals/results/` and progress in [PROGRESS.md](PROGRESS.md). Spec: [SPEC.md](SPEC.md).

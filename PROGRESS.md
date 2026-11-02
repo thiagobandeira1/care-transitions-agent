@@ -14,7 +14,7 @@ and notes generated from it). None of it is MMC data._
 | M2 LangGraph workflow, human review, SQLite tracking, daily check-ins | ✅ done |
 | M3 real local drafting + GPU vs CPU benchmark | ✅ done (below), re-measured after the prompt fix |
 | M4 public synthetic extraction benchmark | ✅ done: 150 notes (43 train / 107 test), rules vs zero-/few-shot 8b and 14b |
-| M5 MIMIC-IV-Note prep code + gold-annotation tooling | ✅ done: download verified, prep run, 200-note gold set exported |
+| M5 MIMIC-IV-Note prep code + gold-annotation tooling | ✅ done: download verified, prep run, 200-note gold set exported, local annotation screen (2026-11-01); annotation not started |
 | M6 baselines on MIMIC (zero-/few-shot) | ✅ done against silver labels, with diagnoses now taken from the note (below); the gold-label run waits for annotation |
 | M7 QLoRA fine-tune | ✅ done: Qwen3-8B, 1 epoch on 8,851 MIMIC train notes with silver labels, 4.4 h, eval loss 0.0136 |
 | M8 GGUF/Ollama export + evaluation | ✅ done: Q4_K_M GGUF via llama.cpp, in Ollama as `ctagent-extractor`; scored on 200 MIMIC and 107 synthetic notes with a matched control (below) |
@@ -479,11 +479,15 @@ Product notes from reading the drafts (for the pilot, not bugs):
 
 ## What needs you
 1. **MIMIC-IV-Note download:** done and verified (M5 above).
-2. **Gold set** (paper 2's reference): exported. Annotate the 200 folders in `MIMIC_WORK_DIR/gold/` following
-   `docs/ANNOTATION.md`. Run `uv run python -m ctagent gold-check` to see progress and agreement. With no
-   co-author, the 50-note overlap needs either a second annotator with their own PhysioNet credentialing (the
-   MIMIC DUA forbids showing notes to anyone else), or your own second pass on those 50 notes at least two
-   weeks later, reported as intra-annotator agreement.
+2. **Gold set** (paper 2's reference): exported, 0 of 200 annotated as of 2026-11-01. Annotate it in the
+   local annotation screen (`uv run streamlit run app/annotate_app.py`), following `docs/ANNOTATION.md`.
+   - The screen shows the note next to the pre-filled answers as editable tables.
+   - It checks each answer against the schema, records the minutes spent, and moves to the next note.
+   - It opens your second pass on the 50 overlap notes 14 days after each first pass, starting from the
+     prefill again, for intra-annotator agreement.
+   - `uv run python -m ctagent gold-check` shows progress and agreement.
+   - `gold-demo` builds a synthetic practice set for trying the screen first.
+   - The MIMIC DUA rules out Claude or any cloud tool reading the notes, so the annotation is yours.
 3. **Publishing:** done on 2026-10-28, after an audit, on Thiago's go. The audit checked every tracked file and
    the full history. It found no MIMIC data, nothing from MMC and no secrets, and no file was ever committed and
    then deleted. Local paths were replaced with placeholders. The repo has aggregate metrics only (`evals/results/`), and the CI guard
@@ -508,6 +512,9 @@ uv run python -m ctagent demo --n 5                               # morning batc
 uv run streamlit run app/review_app.py -- --workspace data/demo   # review screen
 uv run python -m ctagent mimic-prep                               # after the MIMIC download
 uv run python -m ctagent gold-export --n 200 --overlap 50
+uv run streamlit run app/annotate_app.py                         # annotate the gold set (local only)
+uv run python -m ctagent gold-demo --n 10 --overlap 3            # synthetic practice set for the screen
+uv run python -m ctagent gold-check                              # progress and agreement
 uv run python -m ctagent mimic-bench --mode few --model qwen3:8b   # add --ref gold once annotated
 uv run python -m ctagent mimic-bench --mode few --model qwen3:8b --rescore   # rescore saved predictions
 .venv-train/Scripts/python scripts/train_qlora.py --source mimic --base <models>/Qwen3-8B
