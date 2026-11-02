@@ -166,7 +166,6 @@ def main() -> None:
     with st.sidebar:
         st.title("Gold-set annotation")
         st.caption(f"Folder: `{gold_dir}`")
-        st.caption("Local only. Never paste note text into any cloud tool, Claude included.")
         second = st.radio("Pass", ["First pass", "Second pass"], horizontal=True) == "Second pass"
         pr = progress(all_notes, today)
         if second:
