@@ -1,9 +1,8 @@
 # From discharge alerts to follow-up work: design and retrospective evaluation of a local, human-in-the-loop AI agent for primary care
 
-**Thiago Bandeira**
+**Thiago Batista Nunes Bandeira**
 
-General Manager and Head of AI, Mendez Medical Center, Lauderhill, Florida, USA. Correspondence:
-tnunez@mendezmedicalcenter.com
+Mendez Medical Center, Lauderhill, Florida, USA. Correspondence: thiagobandeira.ai@gmail.com
 
 ---
 
@@ -14,35 +13,31 @@ turning each alert into timely follow-up is manual work, and the hospital's disc
 practice. We designed an AI agent that runs on a practice's own hardware and evaluated its components
 retrospectively on public hospital data.
 
-**Materials and Methods.** For each discharge, the agent runs a fixed workflow. Deterministic code scores
-readmission risk (LACE) and sets the follow-up tier, scheduling targets and check-in dates. A local language model
-extracts structured facts from the discharge summary when one exists, then drafts a coordinator call script and
-a provider brief, which an automated check compares with the record. By design, a person approves every output;
-this evaluation stopped before that step. We evaluated the risk tiers against 30-day unplanned readmission (an
-admission-type proxy) in 64,036 MIMIC-IV hospital stays. We evaluated extraction on 200 MIMIC-IV-Note discharge
-summaries from 200 patients, comparing prompted Qwen3 8B and 14B models with QLoRA fine-tunes trained on
-rule-generated or teacher labels. Two references were used, both initialized from the rule-generated labels: an
-author-corrected diagnosis reference (51 notes) and a language-model-corrected reference for all fields (200
-notes). We evaluated the drafts on 195 MIMIC discharges with automated checks only.
+**Materials and Methods.** For each discharge, deterministic code scores readmission risk (LACE) and sets the
+follow-up dates. A local language model extracts structured facts from the discharge summary, when one exists,
+and drafts a coordinator call script and a provider brief; by design a person approves them, and this evaluation
+stopped before that step. On MIMIC-IV, we evaluated the risk tiers against 30-day unplanned readmission (an
+admission-type proxy) in 64,036 stays; extraction in 200 discharge summaries, comparing prompted Qwen3 8B and 14B
+models with QLoRA fine-tunes trained on rule-generated or teacher labels; and drafting in 195 discharges, with
+automated checks. Both extraction references started from the rule-generated labels: an author-corrected diagnosis
+reference (51 notes) and a language-model-corrected reference for all fields (200 notes).
 
-**Results.** The high-risk tier flagged 38.2% of stays, whose 30-day readmission rate was 28.3%, against 14.3% for
-the rest (LACE AUROC 0.638, 95% CI 0.631-0.646). On the 51-note diagnosis reference, fine-tuned 8B models scored
-micro F1 0.93-0.94, against 0.69-0.72 for prompted models zero-shot and 0.81-0.85 few-shot. On the 200-note
-all-field reference, prompted models scored 0.70-0.72 zero-shot and the fine-tunes 0.58-0.60, similar to the
-rule-generated labels themselves (0.58). On the same notes, the fine-tunes matched 243-299 of the rules' 301
-potentially false "started" medications (by note and drug-name key), against 22-46 for prompted models. Drafting took 16.8 s per discharge on one
-consumer GPU. The automated check found no unmatched medication names, and the provider brief named 93.6% of the
-extracted changed medications (92.7% with the same change type).
+**Results.** High-risk discharges were readmitted about twice as often as the rest (28.3% against 14.3%; LACE
+AUROC 0.638). Against the diagnosis reference, the fine-tuned models scored highest (micro F1 0.93-0.94, against
+0.69-0.72 for prompted models zero-shot). Against the all-field reference, prompted models zero-shot scored
+0.70-0.72 and the fine-tunes 0.58-0.60, similar to the rule-generated labels themselves (0.58), and the fine-tunes
+matched 243-299 of the rules' 301 potentially false "started" medications (by note and drug-name key), against
+22-46 for prompted models. Drafting took 16.8 s per discharge on one consumer GPU, and the automated check found no
+medication names unmatched to the record.
 
 **Discussion.** Deterministic rules can carry the time-critical scheduling while small local models handle text.
-Fine-tuning on rule-generated labels reproduced the labels' gaps and potential errors, and evaluation against those same
-labels concealed it.
+Fine-tuning on rule-generated labels reproduced the labels' gaps and potential errors, and evaluation against those
+same labels concealed it.
 
-**Conclusion.** This retrospective component evaluation shows that a local, human-in-the-loop workflow is
-computationally feasible on commodity hardware. On these benchmarks, prompted base models were the better default
-for extraction; fine-tuning should be limited to fields whose labels have been checked against a reference other
-than the training labels. Human review, the clinical accuracy of the drafts and operational benefit remain to be
-evaluated.
+**Conclusion.** A local, human-in-the-loop follow-up agent is computationally feasible on commodity hardware. On
+these benchmarks a prompted base model was the better default extractor; fine-tuning should be limited to fields
+whose labels have been checked against a reference other than the training labels. Human review, the clinical
+accuracy of the drafts and operational benefit remain to be evaluated.
 
 ---
 
@@ -152,6 +147,8 @@ public with the code.
 
 ### 2.3 Evaluating the risk tiers
 
+This part evaluates a published score inside the agent's workflow; it does not develop a new prediction model.
+
 **Cohort.** Every admission with a discharge summary in the test split, excluding deaths in hospital and
 discharges to hospice, for which the agent plans no follow-up.
 
@@ -240,8 +237,9 @@ that produced them.
 - **Language-model-corrected reference.** Claude Opus 5.5 (Anthropic), a cloud service, filled in all six fields on
   all 200 notes on 1 November 2026, by operating the same tool through its browser extension under the author's
   account, whose model-training setting ("Help improve Claude") was turned off at the time (median 0.5 minutes per
-  note). This was the only step in which note text left the local machine;¹⁵
-  every evaluated model, and every other step, ran locally. We treat these labels as model-made, not as hand
+  note). PhysioNet's guidance on online services lists Anthropic Claude among the services it suggests for
+  credentialed data.¹⁵ This was the only step in which note text left the local machine; every evaluated model,
+  and every other step, ran locally. We treat these labels as model-made, not as hand
   annotation.
 
 **Metrics.** List fields are scored as sets, with greedy pairing. A match is exact (normalized equality) or
@@ -677,12 +675,12 @@ recompute every reported metric from the saved outputs (Appendix B maps each tab
 rebuild this paper. Re-running the models may give slightly different outputs, and the hand and language-model
 annotations cannot be regenerated. Fine-tuned weights are not shared, because they were trained on MIMIC.
 
-**Author contributions.** T.B. conceived the study, built the software, ran the analyses and wrote the
+**Author contributions.** T.B.N.B. conceived the study, built the software, ran the analyses and wrote the
 manuscript.
 
 **Competing interests.** The author is General Manager and Head of AI at Mendez Medical Center, where the follow-up
-board described in Section 4.5 runs. The software is open source. The author declares no other competing
-interests.
+board described in Section 4.5 runs. The author founded TH Intelligence, which builds AI and automation tools for
+healthcare organizations. The software is open source. The author declares no other competing interests.
 
 **Funding.** This work received no specific funding.
 

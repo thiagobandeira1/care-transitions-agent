@@ -670,7 +670,9 @@ name>"`. M10 was rerun with these changes.
    - **PDF:** `uv run --with markdown python paper/build_pdf.py` builds `paper/manuscript.pdf` (22 pages, with
      page numbers). Its tables were checked against `evals/results/`.
    - **Figure 1:** `uv run --with matplotlib python paper/figure1.py`.
-   - **Final version 1** (2026-11-02, tagged `v1-preprint`):
+   - **Final version 1** (2026-11-03, tagged `v1-preprint`):
+     - The author line gives the full name and the institution only; the competing interests also name TH
+       Intelligence.
      - It is framed as a retrospective component evaluation. Table 1 separates the TCM requirements from the
        practice's scheduling rules.
      - It adds Table 7 (potential false starts per model) and Appendices A-C (reproducibility details, a
