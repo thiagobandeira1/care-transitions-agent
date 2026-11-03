@@ -46,6 +46,29 @@ def test_charlson_hierarchy_and_weights() -> None:
     assert charlson_score([]) == (0, [])
 
 
+def test_charlson_from_icd_codes() -> None:
+    from ctagent.charlson import CHARLSON_SNOMED, WEIGHTS, code_categories
+
+    assert all(WEIGHTS[c] == w for c, (w, _) in CHARLSON_SNOMED.items())
+    # ICD-10-CM: heart failure, type 2 diabetes with kidney complications, CKD 4, lung cancer, mets
+    icd10 = ["ICD10:I5022", "ICD10:E1122", "ICD10:N184", "ICD10:C3490", "ICD10:C787"]
+    assert charlson_score(icd10) == (1 + 2 + 2 + 6, ["chf", "diab_cc", "metastatic", "renal"])
+    # ICD-9-CM: old MI, COPD, cirrhosis with varices (severe liver replaces mild), dotted is fine
+    icd9 = ["ICD9:412", "ICD9:496", "ICD9:5715", "ICD9:456.0"]
+    assert charlson_categories(icd9) == {"mi", "cpd", "severe_liver"}
+    # a code's version decides: 4280 is CHF in ICD-9, nothing in ICD-10; V434 only in ICD-9
+    assert code_categories("ICD9:4280") == {"chf"} and code_categories("ICD10:4280") == set()
+    assert code_categories("ICD9:V434") == {"pvd"} and code_categories("ICD10:V434") == set()
+    assert code_categories("ICD9:40493") == {"chf", "renal"}  # hypertensive heart and CKD
+    assert code_categories("ICD10:E119") == {"diab"} and code_categories("ICD9:25000") == {"diab"}
+    assert code_categories("ICD10:I10") == set() and code_categories("ICD99:I509") == set()
+
+
+def test_medicare_decides_the_under_65_group() -> None:
+    assert event(age=50).under_65
+    assert not event(age=50).model_copy(update={"medicare": False}).under_65
+
+
 def test_score_discharge() -> None:
     s = score_discharge(event(), ["88805009", "431857002"])  # CHF + CKD 4 -> Charlson 3
     assert (s.lace_l, s.lace_a, s.lace_c, s.lace_e, s.lace) == (4, 3, 3, 2, 12)

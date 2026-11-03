@@ -1,7 +1,7 @@
 # Progress: care-transitions-agent (Stage 4)
 
-_Last updated: 2026-10-28, ~12:30 AM, after repeated list items started being dropped (extraction schema 1.3)
-and every model was scored again. Published on 2026-10-28 at
+_Last updated: 2026-11-02, after the gold set was labeled and every model was scored against it (Finding 3).
+Published on 2026-10-28 at
 https://github.com/thiagobandeira1/care-transitions-agent (code, docs and aggregate metrics only). The M5 to M8 sections report MIMIC aggregates only (counts, rates,
 length quantiles, metrics). Every other number is from synthetic data (Synthea
 and notes generated from it). None of it is MMC data._
@@ -14,11 +14,15 @@ and notes generated from it). None of it is MMC data._
 | M2 LangGraph workflow, human review, SQLite tracking, daily check-ins | ✅ done |
 | M3 real local drafting + GPU vs CPU benchmark | ✅ done (below), re-measured after the prompt fix |
 | M4 public synthetic extraction benchmark | ✅ done: 150 notes (43 train / 107 test), rules vs zero-/few-shot 8b and 14b |
-| M5 MIMIC-IV-Note prep code + gold-annotation tooling | ✅ done: download verified, prep run, 200-note gold set exported, local annotation screen (2026-11-01); annotation not started |
-| M6 baselines on MIMIC (zero-/few-shot) | ✅ done against silver labels, with diagnoses now taken from the note (below); the gold-label run waits for annotation |
+| M5 MIMIC-IV-Note prep code + gold-annotation tooling | ✅ done: download verified, prep run, 200-note gold set exported, local annotation screen (2026-11-01); 200 notes labeled with Claude (`claude.json`, a model-made reference); 51 notes hand-labeled on the diagnoses (2026-11-02) |
+| M6 baselines on MIMIC (zero-/few-shot) | ✅ done against silver labels, hand labels (diagnoses) and Claude's labels (Finding 3) |
 | M7 QLoRA fine-tune | ✅ done: Qwen3-8B, 1 epoch on 8,851 MIMIC train notes with silver labels, 4.4 h, eval loss 0.0136 |
 | M8 GGUF/Ollama export + evaluation | ✅ done: Q4_K_M GGUF via llama.cpp, in Ollama as `ctagent-extractor`; scored on 200 MIMIC and 107 synthetic notes with a matched control (below) |
 | M9 review screen and demo | ✅ smoke-tested on 5 synthetic discharges (queue, drafts, approve) |
+| M10 the agent's drafts on MIMIC | ✅ done (2026-11-02): 195 gold-set discharges with qwen3:14b, counts only (below) |
+| M11 pilot measures | ✅ built (2026-11-02): review edits and time, flag verdicts, contact and visit outcomes, `pilot-report` (below) |
+| M12 risk tiers on MIMIC | ✅ done (2026-11-02): LACE with ICD Charlson on 64,036 stays, AUROC 0.638, high tier 28.3% vs 14.3% readmitted (below) |
+| M13 simulated-use study | 🔶 ready (2026-11-02): 30 synthetic cases, plain-text editing, guide and questionnaire in `docs/SIMULATED_USE.md`; the session itself is pending |
 | Option C: teacher labels for the weak fields | ✅ done: 3 fine-tunes (c2500, s2500 control, c1250) on 14b-labeled notes; weak fields recovered on synthetic; repetition loops found on MIMIC and fixed by dropping repeated list items (Finding 2) |
 
 ## Finding 1 (M7): the fine-tuned model copies its training labels, blind spots included
@@ -171,6 +175,76 @@ the 107 synthetic notes and the 200 MIMIC gold-set notes (against silver).
 other sections, such as the discharge instructions. On the weak fields the teacher and silver disagree a lot:
 pending tests precision 0.10 and recall 0.09, red flags 0.08 and 0.33 (M6, 14b few-shot vs silver). Only the
 gold set can say which one is right.
+
+## Finding 3 (gold set, 2026-11-02): fine-tuning transfers the rules, right and wrong
+**Two references** on the 200 gold-set notes (details in `docs/ANNOTATION.md`):
+- **Hand labels** (`gold.json`): 51 notes, labeled by Thiago in the local screen on 2026-11-02, starting from
+  the prefill (median 0.3 min per note). They cover **principal and secondary diagnoses only**. Medication
+  changes were hand-checked and then dropped: 24% of the hand "started" rows were drugs named in the admission
+  list (a prefill error, below).
+- **Claude's labels** (`claude.json`): all 200 notes and every field, filled in with Claude's browser extension
+  on 2026-11-01 (median 0.5 min per note). A model-made second reference, not hand annotation.
+- On the diagnoses, the prefill agrees with the hand labels at 0.933 relaxed micro F1 and Claude at 0.845.
+
+**Against the hand labels (51 notes, diagnoses only; relaxed F1):**
+
+| Model | Principal dx | Secondary dx | **Micro F1 (95% CI)** | Exact micro F1 |
+|---|---|---|---|---|
+| Rules (the prefill) | 0.931 | 0.933 | **0.933** | |
+| M7: silver, 8,851 notes | 0.950 | 0.937 | **0.942** (0.902-0.980) | 0.923 |
+| s2500: silver, 2,500 notes | 0.931 | 0.925 | **0.927** (0.877-0.970) | 0.884 |
+| c1250: silver + teacher, 1,250 notes | 0.970 | 0.931 | **0.943** (0.894-0.984) | 0.925 |
+| c2500: silver + teacher, 2,500 notes | 0.940 | 0.933 | **0.935** (0.891-0.979) | 0.892 |
+| qwen3-8b-local zero-shot (control) | 0.941 | 0.642 | **0.724** (0.619-0.821) | 0.676 |
+| qwen3:8b zero-shot | 0.911 | 0.625 | **0.702** (0.583-0.815) | 0.660 |
+| qwen3:8b few-shot (3) | 0.961 | 0.800 | **0.849** (0.746-0.938) | 0.807 |
+| qwen3:14b zero-shot | 0.922 | 0.618 | **0.695** (0.580-0.793) | 0.640 |
+| qwen3:14b few-shot (3), the teacher | 0.980 | 0.737 | **0.808** (0.700-0.909) | 0.751 |
+
+**Against Claude's labels (200 notes, every field; relaxed F1):**
+
+| Model | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Med change type acc. |
+|---|---|---|---|---|---|---|---|---|
+| Rules (the prefill) | 0.838 | 0.833 | 0.640 | 0.000 | 0.083 | 0.056 | **0.584** (0.548-0.621) | 0.74 |
+| M7: silver, 8,851 notes | 0.843 | 0.834 | 0.628 | 0.000 | 0.101 | 0.155 | **0.583** (0.546-0.622) | 0.74 |
+| s2500: silver, 2,500 notes | 0.833 | 0.827 | 0.634 | 0.000 | 0.102 | 0.318 | **0.593** (0.554-0.630) | 0.75 |
+| c1250: silver + teacher, 1,250 notes | 0.841 | 0.842 | 0.625 | 0.303 | 0.304 | 0.357 | **0.600** (0.567-0.633) | 0.75 |
+| c2500: silver + teacher, 2,500 notes | 0.835 | 0.831 | 0.610 | 0.300 | 0.203 | 0.366 | **0.588** (0.550-0.625) | 0.73 |
+| qwen3-8b-local zero-shot (control) | 0.852 | 0.749 | 0.725 | 0.416 | 0.225 | 0.754 | **0.704** (0.676-0.729) | 0.85 |
+| qwen3:8b zero-shot | 0.852 | 0.729 | 0.735 | 0.404 | 0.210 | 0.725 | **0.703** (0.672-0.727) | 0.86 |
+| qwen3:8b few-shot (3) | 0.865 | 0.873 | 0.739 | 0.260 | 0.250 | 0.333 | **0.668** (0.640-0.694) | 0.88 |
+| qwen3:14b zero-shot | 0.845 | 0.704 | 0.776 | 0.492 | 0.234 | 0.683 | **0.723** (0.698-0.744) | 0.89 |
+| qwen3:14b few-shot (3), the teacher | 0.877 | 0.808 | 0.729 | 0.357 | 0.293 | 0.412 | **0.675** (0.647-0.700) | 0.86 |
+
+Schema failures: one each for c1250, c2500, 8b-local and 8b zero-shot on the 200 notes (one of them among the
+51 hand-labeled notes for c2500 and 8b zero-shot).
+
+**What it shows:**
+- **The fine-tune's diagnosis gain is real.** Against the hand labels the fine-tunes score 0.93-0.94, against
+  0.69-0.72 for the base models zero-shot, with no overlap between their CIs, and 0.81-0.85 few-shot. Principal
+  diagnosis is 0.91-0.98 for every model; the gap is secondary diagnoses. The base models find most of them
+  (recall 0.80-0.88) but list many more (precision 0.48-0.53 zero-shot), while the fine-tunes keep to the
+  Discharge Diagnosis list (precision 0.87-0.91, recall 0.95-0.99). Claude's labels rank them the same way (secondary
+  0.83-0.84 vs 0.70-0.75 zero-shot), which matters because the hand labels were made from the prefill the
+  fine-tunes learned.
+- **Medication changes go the other way.** The rule marks a drug `started` when it is not on a numbered
+  admission list. In 22 of the 51 hand-labeled notes that list has no numbered items or is missing, and across the 200
+  prefills 304 of 1,211 `started` rows (25%) name a drug found in the admission list text, against 18 of 688
+  (3%) in Claude's labels. The fine-tunes learned the rule: medication F1 0.61-0.63 and change-type accuracy
+  0.73-0.75, at the rules' level (0.64 and 0.74), while the base models reach 0.73-0.78 and 0.85-0.89. This
+  rests on Claude's labels alone.
+- **The weak fields confirm Findings 1 and 2.** The silver-only fine-tunes never list a follow-up (0.000); the
+  teacher-label fine-tunes recover part of it (0.30) but stay below the base models zero-shot (0.40-0.49), and
+  red flags show the same order. Pending tests are low for every model (0.10-0.30).
+- **Overall, against Claude's labels, the base models zero-shot lead** (0.70-0.72), and every fine-tune sits
+  at the rules' level (0.58-0.60). c2500 (0.588) stays below its teacher (0.675).
+
+**For paper 2:** fine-tuning on rule-based labels transfers the rules. It gains where they are right
+(secondary diagnoses, confirmed by both references), loses where they are wrong (medication change types)
+and copies their gaps (follow-up, red flags). Limits to state: the hand reference is 51 notes, 2 fields, a
+quick pass that started from the prefill, with no agreement measure yet (the second pass opens 2026-11-16);
+medication changes and the weak fields rest on Claude's labels, which are model-made and also started from
+the prefill. The agent keeps the few-shot extractor as its default.
 
 ## Earlier finding (2026-10-26): the model never saw the field instructions
 Each LLM call returns JSON that must match a schema, and the schema's field descriptions held the
@@ -477,17 +551,136 @@ Product notes from reading the drafts (for the pilot, not bugs):
   field asks for changes only. Whether the coordinator call should cover all active medications or only
   changes is a workflow choice for Thiago.
 
+### M10: the agent's drafts on MIMIC (2026-11-02, counts only)
+`mimic-drafts` ran the real graph to the review pause on the 200 gold-set notes, with qwen3:14b for drafting
+and its saved zero-shot extraction (`src/ctagent/mimic_agent.py`).
+- **Alert stand-in:** from MIMIC-IV hosp: times, age, disposition, acuity, and prior ER visits from
+  ED-registered admissions only.
+- **EHR stand-in:** the admission's billing diagnoses plus the extraction's diagnoses and medications.
+- **Not evaluated:** LACE got no comorbidity points (the Charlson map is SNOMED only), so the tiers (48 high,
+  147 standard) mean nothing here.
+
+Results are in `evals/results/drafting_mimic_qwen3-14b.json`; the drafts stay in `MIMIC_WORK_DIR/preds/`.
+- **Coverage:** 195 drafted. 5 were skipped because the patient died or went to hospice.
+- **Speed:** 18.2 s per discharge (median 17.5, max 45.6), about 5 minutes for a batch of 15.
+- **Failures:** 4 provider briefs failed after the retry and were flagged; no call script or explanation
+  failed.
+- **Grounding:**
+  - No medication in the drafts was missing from the record. 98.3% of medication names (2,100 of 2,137)
+    appear in the note text.
+  - The record check flagged 16 of 2,371 listed conditions (0.7%, in 12 discharges). 61.8% of the conditions
+    share a word with the note; most of the rest come from billing diagnoses.
+- **Completeness against the extraction:**
+  - changed medications named in the brief: 93.9% (93.0% with the same change type)
+  - changed medications named in the call script: 86.4%
+  - red flags covered by the call script: 85.7%
+- **For the pilot:** briefs list 12.2 conditions on average, many from billing codes. A one-page brief should
+  rank or cap them.
+
+**Rerun with the final agent (2026-11-02, after M12 and M13's changes).** The results file now holds this run;
+the numbers above are the first run.
+- **Changes:** ICD Charlson in LACE, the brief capped at 6 conditions, and a no-placeholder rule.
+- **Speed:** 16.8 s per discharge (median 16.1, max 31.3).
+- **Failures:** none (the first run had 4 failed briefs).
+- **Medications:** none flagged against the record; 98.4% found in the note (2,064 of 2,098).
+- **Conditions:** 5.9 per brief (from 12.2). 3 of 1,144 flagged (from 16), in 2 discharges; 65.2% share a word
+  with the note.
+- **Completeness:** brief 93.6% (92.7% with the same change type), call script 86.5%, red flags 86.9%. All
+  within 1.2 points of the first run.
+- **Tiers:** 67 high, 128 standard.
+- **Placeholders:**
+  - With no practice name (the MIMIC runs), every call script still had a practice-name placeholder despite
+    the rule.
+  - With the name (the 30 simulated-use cases, `--practice`), none had one: all 30 name the practice and list
+    5.8 conditions per brief.
+
+### M11: pilot measures (2026-11-02)
+The agent now records what the paper's "how it is used" section needs, from the pilot's first day:
+- **Review** (new `reviews` table):
+  - the decision (approve, edit or reject) and the reviewer
+  - seconds spent, timed by the review screen
+  - whether the flags were real problems (the screen asks when there are flags)
+  - for each document, the share of text the reviewer changed against the draft as written, and which fields
+- **Follow-up** (new tab in the review screen): interactive contact date, attempts and minutes; visit scheduled
+  and attended dates; readmission within 30 days. Older tracking databases get the new columns on open.
+- **Report:** `python -m ctagent pilot-report --workspace <dir> [--date ...]` prints counts, shares and medians
+  only, never identifiers or text:
+  - decisions, edits and the fields edited, review time, flag verdicts
+  - contact within 2 business days, and visits by the practice's target and by the TCM deadline, overall and
+    by tier
+  - business days to contact, days to visit, contact effort, check-ins done by their due date
+  - readmissions, descriptive only
+
+  A deadline counts only once it has passed or its event is recorded.
+- **Tests:** `tests/test_pilot.py`. A smoke test of the screen (synthetic discharge: approve, record follow-up,
+  report) worked end to end.
+- **Not covered:** the comparison baseline. It would come from the practice's records before a pilot.
+
+The pilot of the full agent was dropped on 2026-11-02 (the practice's records don't fit it). "How it is used"
+is now the simulated-use study (M13). The practice already runs the rule-based steps live on its own follow-up
+board, without discharge summaries; the paper describes that board anonymously, and any counts from it are
+computed at the practice, aggregates only.
+
+### M12: the risk tiers against real readmissions (MIMIC-IV, 2026-11-02)
+`mimic-risk` (`src/ctagent/mimic_risk.py`) evaluates the agent's score-and-tier step on every test-split
+admission with a discharge summary. Results: `evals/results/risk_mimic.json`.
+- **Charlson from ICD codes:** `charlson.py` now has Quan's 2005 ICD-9-CM and ICD-10 algorithms, prefix-matched
+  and keyed by version ("ICD9:4280", "ICD10:I509").
+- **Medicare under 65:** `DischargeEvent.medicare` (default true, as in the Synthea cohort) feeds the rule; MIMIC
+  sets it from insurance.
+- **Cohort and outcome:** 64,036 stays from 28,220 patients, after excluding 1,692 in-hospital deaths and 671
+  hospice discharges. The outcome is an unplanned admission 1-30 days after discharge: 12,601 stays (19.7%).
+- **Results** (95% CI from 1,000 patient bootstraps):
+  - LACE AUROC: 0.638 (0.631-0.646) for readmission; 0.654 (0.647-0.660) for death or readmission.
+  - The agent's high tier flags 38.2% of stays. Their readmission rate is 28.3%, against 14.3% for the
+    standard tier, and it catches 55.1% of readmissions.
+  - LACE ≥ 10 alone flags 34.9% at 28.9% and catches 51.3%.
+- **Inputs:** 71.1% of stays have a Charlson condition, 29.2% a prior ED-registered admission, and 80.9% an
+  acute admission. Median LACE is 8 (IQR 6-11).
+- **Limits:** readmissions elsewhere are invisible to MIMIC, prior ED visits are undercounted, and billing
+  codes are assigned after discharge.
+
+### M13: the simulated-use study (ready 2026-11-02)
+`docs/SIMULATED_USE.md` is the protocol and the reviewer's guide: someone who does hospital follow-up reviews
+30 synthetic discharges in the review screen, then fills in a 7-item questionnaire.
+
+Changes made before the session, so the reviewer sees the final agent:
+- **Edit boxes:** drafts are edited as plain text, field by field (one item per line; medications as
+  `name | change | note`), instead of JSON.
+- **No placeholders:** the practice and coordinator names reach every prompt (`demo --practice
+  --coordinator`), and the system prompt forbids placeholders such as "[Your Name]".
+- **Shorter condition lists:** the brief now asks for at most 6 conditions, most important first.
+
+The 30 cases are built with `demo --n 30 --seed 31 --workspace data/simulated-use --practice "<the practice's
+name>"`. M10 was rerun with these changes.
+
 ## What needs you
 1. **MIMIC-IV-Note download:** done and verified (M5 above).
-2. **Gold set** (paper 2's reference): exported, 0 of 200 annotated as of 2026-11-01. Annotate it in the
-   local annotation screen (`uv run streamlit run app/annotate_app.py`), following `docs/ANNOTATION.md`.
-   - The screen shows the note next to the pre-filled answers as editable tables.
-   - It checks each answer against the schema, records the minutes spent, and moves to the next note.
-   - It opens your second pass on the 50 overlap notes 14 days after each first pass, starting from the
-     prefill again, for intra-annotator agreement.
-   - `uv run python -m ctagent gold-check` shows progress and agreement.
-   - `gold-demo` builds a synthetic practice set for trying the screen first.
-   - The MIMIC DUA rules out Claude or any cloud tool reading the notes, so the annotation is yours.
+1b. **Paper** (`paper/draft.md`, solo author, 2026-11-02): one paper on the agent, covering what it does, how
+   well it performs (risk tiers, M12; extraction, Finding 3; drafts, M10) and how it would be used (the
+   simulated-use session, marked [STUDY]; the practice's live board, marked [PRACTICE]). The practice is not
+   named.
+   - **Version 1 for medRxiv** (2026-11-02): `paper/manuscript.md`, in prose.
+     - The author is General Manager and Head of AI at Mendez Medical Center, which is named, with the
+       practice's written approval. The author owns the code, and no practice data were used.
+     - No funding. Claude Opus 5.5 is disclosed for the reference labels. The acknowledgments thank Oscar
+       Mendez, MD, and the practice for testing the prototype.
+     - It covers the public-data work (risk tiers, extraction, drafts) and describes the board in words; the
+       session and the board counts are next steps for version 2.
+   - **PDF:** `uv run --with markdown python paper/build_pdf.py` builds `paper/manuscript.pdf` (16 pages). Its
+     tables were copied from a local working draft (not in the repo) whose tables were checked against
+     `evals/results/`.
+   - **Figure 1:** `uv run --with matplotlib python paper/figure1.py`.
+   - **Still needed:** the correspondence email.
+2. **Gold set** (paper 2's reference): done for this round (Finding 3).
+   - `gold.json`: 51 notes hand-labeled on the diagnoses (2026-11-02). Medication changes were dropped from
+     the hand reference (see `docs/ANNOTATION.md`).
+   - `claude.json`: all 200 notes labeled with Claude's browser extension (2026-11-01), a second,
+     model-made reference for every field.
+   - Optional: the second pass on the 50 overlap notes opens on 2026-11-16, for intra-annotator agreement
+     on the diagnoses.
+   - What would make the paper stronger: hand labels for medication changes from a careful pass, since
+     that field now rests on Claude's labels alone.
 3. **Publishing:** done on 2026-10-28, after an audit, on Thiago's go. The audit checked every tracked file and
    the full history. It found no MIMIC data, nothing from MMC and no secrets, and no file was ever committed and
    then deleted. Local paths were replaced with placeholders. The repo has aggregate metrics only (`evals/results/`), and the CI guard
@@ -515,8 +708,12 @@ uv run python -m ctagent gold-export --n 200 --overlap 50
 uv run streamlit run app/annotate_app.py                         # annotate the gold set (local only)
 uv run python -m ctagent gold-demo --n 10 --overlap 3            # synthetic practice set for the screen
 uv run python -m ctagent gold-check                              # progress and agreement
-uv run python -m ctagent mimic-bench --mode few --model qwen3:8b   # add --ref gold once annotated
+uv run python -m ctagent mimic-bench --mode few --model qwen3:8b   # --ref gold (hand) or --ref claude
 uv run python -m ctagent mimic-bench --mode few --model qwen3:8b --rescore   # rescore saved predictions
+uv run python -m ctagent mimic-drafts --model qwen3:14b [--limit 3]   # the agent's drafts on the gold-set notes
+uv run python -m ctagent pilot-report --workspace data/demo   # pilot measures, counts only
+uv run python -m ctagent mimic-risk   # LACE tiers vs 30-day readmission on MIMIC-IV
+uv run streamlit run app/review_app.py -- --workspace data/simulated-use   # the simulated-use session
 .venv-train/Scripts/python scripts/train_qlora.py --source mimic --base <models>/Qwen3-8B
 .venv-train/Scripts/python scripts/export_ollama.py --base <models>/Qwen3-8B --adapter <MIMIC_WORK_DIR>/models/Qwen3-8B-extractor-mimic/adapter
 .venv-train/Scripts/python scripts/export_ollama.py --base <models>/Qwen3-8B --name qwen3-8b-local --out <models>/qwen3-8b-gguf   # control

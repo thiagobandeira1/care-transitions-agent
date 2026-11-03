@@ -2,7 +2,11 @@
 
 Export writes one folder per sampled test note under MIMIC_WORK_DIR/gold/ with the model input and
 silver labels as a pre-fill. Check validates annotations and reports agreement (silver vs gold,
-annotator A vs B) as aggregate F1, never note text. See docs/ANNOTATION.md.
+Claude vs gold, first vs second pass) as aggregate F1, never note text. See docs/ANNOTATION.md.
+
+gold.json is hand-labeled, on the fields listed in its `fields` key (agreement uses only those).
+claude.json holds the labels filled in with Claude for all 200 notes (2026-11-01): a second,
+model-made reference, never the gold standard.
 """
 
 import json
@@ -12,8 +16,11 @@ from typing import Any
 import pandas as pd
 from pydantic import ValidationError
 
+from .annotate import common_fields
 from .extract_eval import evaluate
 from .extraction import DischargeExtraction
+
+CLAUDE = "claude.json"
 
 
 def export(work_dir: Path, n: int, overlap: int, seed: int = 21) -> dict[str, int]:
@@ -54,14 +61,28 @@ def check(work_dir: Path) -> dict[str, Any]:
         and (a := _load(f / "gold.json"))
         and (b := _load(f / "gold_b.json"))
     ]
+    claude = [c for f in folders if (f / CLAUDE).exists() and (c := _load(f / CLAUDE))]
+    claude_vs_gold = [
+        (c, g)
+        for f in valid
+        if (f / CLAUDE).exists() and (c := _load(f / CLAUDE)) and (g := _load(f / "gold.json"))
+    ]
     out: dict[str, Any] = {
         "folders": len(folders),
         "annotated": len(done),
         "invalid": len(invalid),
         "double_annotated": len(pairs_ab),
+        "claude_labeled": len(claude),
     }
+    fields = common_fields(f / "gold.json" for f in valid)
+    if valid:
+        out["gold_fields"] = list(fields)
     if silver_vs_gold:
-        out["silver_vs_gold"] = evaluate(silver_vs_gold).summary()
+        out["silver_vs_gold"] = evaluate(silver_vs_gold, fields).summary()
+    if claude_vs_gold:
+        out["claude_vs_gold"] = evaluate(claude_vs_gold, fields).summary()
     if pairs_ab:
-        out["annotator_b_vs_a"] = evaluate(pairs_ab).summary()
+        twice = [f for f in valid if (f / "gold_b.json").exists()]
+        ab_fields = common_fields(f / n for f in twice for n in ("gold.json", "gold_b.json"))
+        out["annotator_b_vs_a"] = evaluate(pairs_ab, ab_fields).summary()
     return out

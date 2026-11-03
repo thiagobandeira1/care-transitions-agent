@@ -23,17 +23,21 @@ flowchart LR
   I -. daily job .-> J[check-ins due]
 ```
 
-## Results so far (details in [PROGRESS.md](PROGRESS.md))
-- **Agent on Synthea:** qwen3:14b drafts the plan explanation, call script and provider brief in 15.8 s per
-  discharge on an RTX 4080, with no schema failures and no grounding flags in 30 discharges. CPU only, it takes
-  about 3 minutes per discharge.
-- **Extraction on the synthetic benchmark** (107 notes with known answers, micro F1): rules 0.696, qwen3:8b
-  zero-shot 0.947, qwen3:14b few-shot 0.979.
-- **QLoRA fine-tuning of Qwen3-8B on MIMIC-IV-Note:** trained on rule-based labels, the model copied them, gaps
-  included (synthetic micro F1 0.789). Labeling the weak fields with the 14b few-shot model instead brought them
-  back (0.948), at 2.4-2.8 times the 14b model's speed.
-- **Pending:** a hand-annotated MIMIC gold set, which decides whether fine-tuning or few-shot prompting is more
-  accurate on real notes. The MIMIC-trained weights are not distributed ([model card](docs/MODEL_CARD.md)).
+## Results (paper: [paper/manuscript.pdf](paper/manuscript.pdf); details in [PROGRESS.md](PROGRESS.md))
+- **Risk tiers on MIMIC-IV** (64,036 stays): the high tier flags 38.2% of stays, whose 30-day readmission rate
+  is 28.3%, against 14.3% for the rest. LACE AUROC is 0.638 (0.631-0.646).
+- **Extraction on MIMIC-IV-Note:**
+  - Against hand labels (51 notes, diagnoses), fine-tuned Qwen3-8B scores micro F1 0.93-0.94, against
+    0.69-0.72 for prompted models.
+  - Across all fields (200 notes, a model-made reference), prompted models lead (0.70-0.72), and the fine-tunes
+    perform at the level of their rule-based training labels (0.58-0.60). Fine-tuning transferred the rules,
+    errors and gaps included.
+- **Drafts on 195 MIMIC discharges** (qwen3:14b, one RTX 4080):
+  - 16.8 s per discharge, with no validation failures and no medication absent from the record
+  - 93.6% of the extracted medication changes reach the provider brief
+- **Synthetic benchmark** (107 notes with known answers, micro F1): rules 0.696, qwen3:8b zero-shot 0.947,
+  qwen3:14b few-shot 0.979.
+- The MIMIC-trained weights are not distributed ([model card](docs/MODEL_CARD.md)).
 
 ## Design choices (see `docs/adr`)
 - **Fixed graph, narrow LLM jobs.** Small local models don't choose tools. Scores, tiers and deadlines are
@@ -50,8 +54,10 @@ flowchart LR
 - **Public track (this repo):** Synthea synthetic patients only, including the committed benchmark notes and
   draft samples.
 - **Research track (local only):** fine-tuning and evaluation on MIMIC-IV-Note under the PhysioNet credentialed
-  license. No MIMIC data, note text or MIMIC-trained weights are in this repository, and no MIMIC text is ever
-  sent to a cloud service, AI assistants included (ADR 0001). CI fails if data files or weights are tracked.
+  license. No MIMIC data, note text or MIMIC-trained weights are in this repository (ADR 0001). Every model
+  that is trained or evaluated runs locally. One exception: the 200 gold-set notes were labeled with Claude to
+  make a second reference ([docs/ANNOTATION.md](docs/ANNOTATION.md)). CI fails if data files or weights are
+  tracked.
 
 ## Run it
 ```
@@ -61,6 +67,7 @@ ollama pull qwen3:14b
 uv run python -m ctagent cohort                        # Synthea discharge cohort
 uv run python -m ctagent demo --n 10                   # morning batch -> review queue
 uv run streamlit run app/review_app.py -- --workspace data/demo
+uv run python -m ctagent pilot-report --workspace data/demo   # review, timeliness and outcome measures
 uv run python -m ctagent bench --model qwen3:14b [--cpu]
 uv run python -m ctagent extract-bench --mode few --model qwen3:8b
 uv run python -m ctagent gold-demo --n 10 --overlap 3     # synthetic practice set

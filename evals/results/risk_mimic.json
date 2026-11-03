@@ -1,0 +1,80 @@
+{
+  "benchmark": "the agent's LACE tiers vs 30-day readmission, MIMIC-IV test split",
+  "index_stays": 64036,
+  "patients": 28220,
+  "excluded": {
+    "died_in_hospital": 1692,
+    "hospice": 671
+  },
+  "readmissions_30d": 12601,
+  "deaths_30d": 1332,
+  "estimates": {
+    "lace_auroc_readmit30": 0.638,
+    "lace_auroc_death_or_readmit30": 0.654,
+    "readmit30_rate": 0.197,
+    "high_tier_share": 0.382,
+    "readmit30_rate_high": 0.283,
+    "readmit30_rate_standard": 0.143,
+    "high_tier_sensitivity": 0.551,
+    "lace10_share": 0.349,
+    "readmit30_rate_lace10": 0.289,
+    "lace10_sensitivity": 0.513
+  },
+  "ci95": {
+    "lace_auroc_readmit30": [
+      0.631,
+      0.646
+    ],
+    "lace_auroc_death_or_readmit30": [
+      0.647,
+      0.66
+    ],
+    "readmit30_rate": [
+      0.192,
+      0.202
+    ],
+    "high_tier_share": [
+      0.375,
+      0.39
+    ],
+    "readmit30_rate_high": [
+      0.275,
+      0.292
+    ],
+    "readmit30_rate_standard": [
+      0.139,
+      0.147
+    ],
+    "high_tier_sensitivity": [
+      0.536,
+      0.566
+    ],
+    "lace10_share": [
+      0.343,
+      0.356
+    ],
+    "readmit30_rate_lace10": [
+      0.28,
+      0.297
+    ],
+    "lace10_sensitivity": [
+      0.499,
+      0.527
+    ]
+  },
+  "lace_quantiles": {
+    "0.1": 4.0,
+    "0.25": 6.0,
+    "0.5": 8.0,
+    "0.75": 11.0,
+    "0.9": 13.0
+  },
+  "share_with_charlson": 0.711,
+  "share_with_prior_ed": 0.292,
+  "share_acute": 0.809,
+  "bootstrap": {
+    "resamples": 1000,
+    "unit": "patient",
+    "seed": 11
+  }
+}

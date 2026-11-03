@@ -1,0 +1,60 @@
+{
+  "benchmark": "agent drafting on MIMIC-IV-Note gold-set notes",
+  "model": "qwen3:14b",
+  "extractor": "qwen3-14b_zero",
+  "n_notes": 200,
+  "n_drafted": 195,
+  "skipped": {
+    "hospice_or_expired": 5
+  },
+  "with_extraction": 195,
+  "seconds_per_discharge": {
+    "mean": 16.8,
+    "median": 16.1,
+    "max": 31.3
+  },
+  "discharges_with_schema_failure": 0,
+  "record_grounding": {
+    "discharges_flagged": 2,
+    "medications_flagged": 0,
+    "conditions_flagged": 3
+  },
+  "note_grounding": {
+    "medications": {
+      "draft_meds_in_note": 2064,
+      "draft_meds": 2098,
+      "share": 0.984
+    },
+    "conditions": {
+      "draft_conditions_in_note": 746,
+      "draft_conditions": 1144,
+      "share": 0.652
+    }
+  },
+  "completeness": {
+    "changed_meds_in_brief": {
+      "changed_in_brief": 1075,
+      "changed_meds": 1149,
+      "share": 0.936
+    },
+    "changed_meds_in_brief_same_type": {
+      "changed_in_brief_same_type": 1065,
+      "changed_meds": 1149,
+      "share": 0.927
+    },
+    "changed_meds_in_script": {
+      "changed_in_script": 994,
+      "changed_meds": 1149,
+      "share": 0.865
+    },
+    "red_flags_in_script": {
+      "red_flags_in_script": 615,
+      "red_flags": 708,
+      "share": 0.869
+    }
+  },
+  "tiers": {
+    "standard": 128,
+    "high": 67
+  }
+}

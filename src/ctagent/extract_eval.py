@@ -95,24 +95,33 @@ class Report:
     med_names_matched: int = 0
     med_type_correct: int = 0
     n: int = 0
+    fields: tuple[str, ...] = FIELDS  # what the summary reports: the fields the reference covers
 
     def summary(self) -> dict[str, object]:
         out: dict[str, object] = {"n": self.n}
+        if self.fields != FIELDS:
+            out["fields"] = list(self.fields)
         for mode in ("exact", "relaxed"):
             counts: dict[str, Counts] = getattr(self, mode)
             total = Counts()
-            for f in FIELDS:
+            for f in self.fields:
                 total.add(counts[f])
-            out[mode] = {**{f: counts[f].prf() for f in FIELDS}, "micro": total.prf()}
+            out[mode] = {**{f: counts[f].prf() for f in self.fields}, "micro": total.prf()}
         out["med_change_type_accuracy"] = (
             self.med_type_correct / self.med_names_matched if self.med_names_matched else 0.0
         )
         return out
 
 
-def evaluate(pairs: Iterable[tuple[DischargeExtraction | None, DischargeExtraction]]) -> Report:
-    """`pred` may be None (schema failure): everything in the reference counts as missed."""
-    rep = Report()
+def evaluate(
+    pairs: Iterable[tuple[DischargeExtraction | None, DischargeExtraction]],
+    fields: tuple[str, ...] = FIELDS,
+) -> Report:
+    """`pred` may be None (schema failure): everything in the reference counts as missed.
+
+    `fields` limits the summary (and its micro average) to the fields the reference labels.
+    """
+    rep = Report(fields=fields)
     for pred, ref in pairs:
         rep.n += 1
         p = pred or DischargeExtraction(principal_diagnosis=None)

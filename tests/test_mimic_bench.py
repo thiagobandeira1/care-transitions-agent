@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 import ctagent.mimic_bench as mb
+from ctagent.annotate import HAND_FIELDS
 from ctagent.extraction import DischargeExtraction
 from ctagent.gold import export
 from ctagent.llm import FakeLLM
@@ -97,6 +98,13 @@ def test_gold_reference_uses_valid_annotations_only(work: Path) -> None:
     )
     assert res["n"] == 1 and res["benchmark"].endswith("gold labels")
 
+    for f in folders[:3]:
+        (f / "claude.json").write_text(_label().model_dump_json())
+    res = mb.run(
+        work, "zero", "qwen3:8b", ref="claude", llm=FakeLLM({"DischargeExtraction": _answer})
+    )
+    assert res["n"] == 3 and res["benchmark"].endswith("claude labels")
+
 
 def test_rescore_scores_saved_predictions_against_current_labels(work: Path) -> None:
     first = mb.run(work, "few", "qwen3:8b", llm=FakeLLM({"DischargeExtraction": _answer}))
@@ -109,6 +117,17 @@ def test_rescore_scores_saved_predictions_against_current_labels(work: Path) -> 
     (folder / "gold.json").write_text(_label(follow_up=False).model_dump_json())
     gold = mb.run(work, "few", "qwen3:8b", ref="gold", llm=no_model, rescore=True)
     assert gold["n"] == 1 and gold["relaxed"]["follow_up"]["precision"] == 0.0
+
+
+def test_gold_scores_only_the_hand_labeled_fields(work: Path) -> None:
+    mb.run(work, "zero", "qwen3:8b", llm=FakeLLM({"DischargeExtraction": _answer}))
+    folder = sorted((work / "gold").iterdir())[0]
+    hand = _label(follow_up=False).model_dump(mode="json") | {"fields": list(HAND_FIELDS)}
+    (folder / "gold.json").write_text(json.dumps(hand))
+    res = mb.run(work, "zero", "qwen3:8b", ref="gold", llm=FakeLLM(), rescore=True)
+    assert res["fields"] == list(HAND_FIELDS)
+    assert set(res["relaxed"]) == set(res["relaxed_f1_ci95"]) == {*HAND_FIELDS, "micro"}
+    assert res["relaxed"]["micro"]["f1"] == 1.0  # the model's follow-up is not scored
 
 
 def test_rescore_needs_a_full_run_first(work: Path) -> None:

@@ -66,3 +66,7 @@ Thumbs.db
 # ---- Allowed: SYNTHETIC fixtures only (Synthea-derived or generated; never real or MIMIC text) ----
 !synthetic/samples/
 !synthetic/samples/**
+
+# ---- paper: the build leftover and the local working draft stay out ----
+paper/manuscript.html
+paper/draft.md

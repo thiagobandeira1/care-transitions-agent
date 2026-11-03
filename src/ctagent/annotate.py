@@ -3,22 +3,30 @@
 The screen stays thin; opening a note, turning the form into a DischargeExtraction, saving and the
 second-pass rules live here and are tested without a browser. Nothing here prints note text.
 
-- First pass: correct `prefill.json` into `gold.json` for every note.
-- Second pass (the 50 OVERLAP notes): the same annotator starts again from the prefill, without
+- First pass: correct `prefill.json` into `gold.json` by hand, the 50 OVERLAP notes first. Only
+  HAND_FIELDS are labeled; the file lists them under `fields`, and scoring uses only those.
+- Second pass (the OVERLAP notes): the same annotator starts again from the prefill, without
   seeing `gold.json`, and writes `gold_b.json` at least SECOND_PASS_DAYS after the first pass.
+- `claude.json` (labels filled in with Claude, kept as a second reference) is never opened here.
 """
 
 import json
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from .extract_eval import FIELDS
 from .extraction import Diagnosis, DischargeExtraction, FollowUp, MedicationChange
 
 FIRST, SECOND = "gold.json", "gold_b.json"
 SECOND_PASS_DAYS = 14
+# The fields labeled by hand; every other field is scored against claude.json only (Thiago's
+# decisions, 2026-11-02). Medication changes were dropped after the hand pass: 24% of its
+# "started" rows were drugs on the admission list, a prefill error the pass kept.
+HAND_FIELDS = ("principal_diagnosis", "secondary_diagnoses")
 # editable table per list field: column names, and which pydantic model a row becomes
 TABLES: dict[str, tuple[str, ...]] = {
     "secondary_diagnoses": ("text", "icd10"),
@@ -64,6 +72,22 @@ def read_saved(path: Path) -> tuple[DischargeExtraction, dict[str, Any]] | None:
         return DischargeExtraction.model_validate(raw), raw
     except (OSError, ValueError):
         return None
+
+
+def checked_fields(path: Path) -> tuple[str, ...]:
+    """The fields a saved annotation covers: its `fields` key, or every field if it has none."""
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return FIELDS
+    listed = raw.get("fields", FIELDS) if isinstance(raw, dict) else FIELDS
+    return tuple(f for f in FIELDS if f in listed)
+
+
+def common_fields(paths: Iterable[Path]) -> tuple[str, ...]:
+    """The fields every one of these annotations covers, which is what scoring may use."""
+    checked = [set(checked_fields(p)) for p in paths]
+    return tuple(f for f in FIELDS if all(f in c for c in checked))
 
 
 def start_labels(note: Note, second: bool) -> tuple[DischargeExtraction, float, bool]:
@@ -127,11 +151,21 @@ def from_form(
 
 
 def save(
-    note: Note, ext: DischargeExtraction, minutes: float, second: bool, now: datetime | None = None
+    note: Note,
+    ext: DischargeExtraction,
+    minutes: float,
+    second: bool,
+    now: datetime | None = None,
+    fields: tuple[str, ...] = HAND_FIELDS,
 ) -> Path:
-    """Write gold.json (or gold_b.json) atomically, with the minutes spent and the save time."""
+    """Write gold.json (or gold_b.json) atomically: the checked fields (the rest left empty),
+    which fields those are, the minutes spent and the save time."""
     now = now or datetime.now()
-    data = ext.model_dump(mode="json") | {
+    blank: dict[str, Any] = {
+        f: None if f == "principal_diagnosis" else [] for f in FIELDS if f not in fields
+    }
+    data = ext.model_copy(update=blank).model_dump(mode="json") | {
+        "fields": list(fields),
         "minutes": round(minutes, 1),
         "saved_at": now.isoformat(timespec="seconds"),
     }
@@ -173,7 +207,8 @@ def queue(all_notes: list[Note], second: bool) -> list[Note]:
 
 
 def next_todo(all_notes: list[Note], second: bool, today: date) -> Note | None:
-    for n in queue(all_notes, second):
+    """The first note left to do, overlap notes first (the hand-labeled set)."""
+    for n in sorted(queue(all_notes, second), key=lambda n: not n.overlap):
         if status(n, second, today) in ("todo", "invalid"):
             return n
     return None
@@ -186,6 +221,7 @@ def progress(all_notes: list[Note], today: date) -> dict[str, int]:
         "notes": len(all_notes),
         "first_pass_done": sum(status(n, False, today) == "done" for n in all_notes),
         "overlap_notes": len(overlap),
+        "first_pass_overlap_done": sum(status(n, False, today) == "done" for n in overlap),
         "second_pass_done": second.count("done"),
         "second_pass_open": second.count("todo"),
     }

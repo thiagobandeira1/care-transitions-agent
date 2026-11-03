@@ -172,6 +172,26 @@ def test_prompt_contains_only_record_facts(tmp_path: Path) -> None:
     assert (
         "- summary (text): 2-3 plain sentences" in prompt
     )  # the schema's guidance reaches the model
+    assert "WRITER" not in prompt  # no practice given: no names, and the system bars placeholders
+
+
+def test_practice_and_coordinator_reach_every_prompt(tmp_path: Path) -> None:
+    llm = FakeLLM(good())
+    graph = build_graph(
+        Deps(
+            llm=llm,
+            contexts=lambda e: CTX,
+            tracker=Tracker(tmp_path / "t.sqlite"),
+            practice="Sunrise Family Practice",
+            coordinator="Ana",
+        ),
+        InMemorySaver(),
+    )
+    start_discharge(graph, EVENT)
+    assert [name for name, _ in llm.calls] == ["PlanExplanation", "CallScript", "ProviderBrief"]
+    assert all(
+        "WRITER\nPractice: Sunrise Family Practice. Coordinator: Ana." in p for _, p in llm.calls
+    )
 
 
 def test_review_survives_restart_with_sqlite_checkpointer(tmp_path: Path) -> None:

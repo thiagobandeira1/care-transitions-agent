@@ -15,7 +15,8 @@ from .synthea import base_name
 SYSTEM = (
     "You draft documents for a primary care practice's hospital follow-up coordinator. "
     "Use ONLY facts in the provided record. Never invent medications, diagnoses, results or dates. "
-    "If something is unknown, leave it out. Every draft is reviewed by a human before use."
+    "If something is unknown, leave it out. Never write placeholders such as [Your Name]: use the "
+    "practice and coordinator names given, or none. Every draft is reviewed by a human before use."
 )
 
 
@@ -69,7 +70,10 @@ class CallScript(BaseModel):
 
 class ProviderBrief(BaseModel):
     reason_for_admission: Para = Field(description="One sentence, from the record")
-    key_conditions: Items = Field(description="Relevant chronic conditions, names from record")
+    key_conditions: Items = Field(
+        description="Up to 6 chronic conditions that matter for this follow-up, most important "
+        "first, names from record"
+    )
     medication_changes: list[MedLine] = Field(description="Only medications that changed")
     watch_for: Items = Field(description="What to check at the follow-up visit")
     risk_summary: Para = Field(description="One sentence on readmission risk and its drivers")

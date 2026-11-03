@@ -45,8 +45,9 @@ are out of scope here. This repo never touches MMC data.
     sections, with name normalization
   - follow-up, pending tests and red flags from rule-based section parsing, plus an optional local teacher LLM.
     The teacher is a larger Ollama model running locally, and its agreement with gold is reported.
-- **Gold set:** about 200 test-split notes, annotated by Thiago under a written guideline, with a second annotator
-  (a co-author) on a 50-note overlap to measure inter-annotator agreement (kappa / F1). Annotation files stay local.
+- **Gold set:** about 200 test-split notes, annotated by Thiago (sole author) under a written guideline, with a
+  second pass by the same annotator on a 50-note overlap to measure intra-annotator agreement. Annotation files stay
+  local. What was actually built is in `docs/ANNOTATION.md` and PROGRESS.md (Finding 3).
 
 **Models:**
 - Base: Qwen3-8B or Llama-3.1-8B-Instruct, from Hugging Face weights, chosen by a small pilot on validation only.

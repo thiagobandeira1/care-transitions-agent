@@ -58,6 +58,9 @@ class DischargeEvent(BaseModel):
     acute: bool = Field(description="ER contact on the admission day or the day before")
     er_visits_6m: int = Field(ge=0, description="Distinct ER days 2-182 days before admission")
     n_stays: int = 1
+    medicare: bool = Field(
+        default=True, description="Medicare beneficiary (all of the Synthea cohort)"
+    )
 
     @property
     def los_days(self) -> int:
@@ -65,7 +68,8 @@ class DischargeEvent(BaseModel):
 
     @property
     def under_65(self) -> bool:
-        return self.age < 65
+        """A Medicare beneficiary under 65 (entitled through disability): the lower threshold."""
+        return self.medicare and self.age < 65
 
 
 class PatientContext(BaseModel):

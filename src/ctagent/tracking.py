@@ -1,7 +1,12 @@
-"""Local SQLite tracking of plans, reviews, check-ins and outcomes (no graph stays open 30 days)."""
+"""Local SQLite tracking of plans, reviews, check-ins and outcomes (no graph stays open 30 days).
+
+The `reviews` table and the contact columns hold the pilot measures (`pilot.report` reads them):
+how each draft was reviewed and edited, review time, whether flags were real, and contact effort.
+"""
 
 import json
 import sqlite3
+from collections.abc import Sequence
 from datetime import date, datetime
 from pathlib import Path
 
@@ -20,7 +25,23 @@ create table if not exists outcomes (
     episode_id text primary key references discharges(episode_id), contacted_at text,
     visit_scheduled text, visit_attended text, readmitted integer
 );
+create table if not exists reviews (
+    episode_id text primary key references discharges(episode_id), decision text not null,
+    reviewer text not null, decided_at text not null, review_seconds real,
+    flags integer not null, flags_real text, script_edit real, brief_edit real,
+    fields_edited text not null default '[]', note text not null default ''
+);
 """
+# columns added after the first deployments; created on open if an older database lacks them
+ADDED_COLUMNS = {"outcomes": {"contact_attempts": "integer", "contact_minutes": "integer"}}
+OUTCOME_FIELDS = {
+    "contacted_at",
+    "contact_attempts",
+    "contact_minutes",
+    "visit_scheduled",
+    "visit_attended",
+    "readmitted",
+}
 
 
 class Tracker:
@@ -28,6 +49,11 @@ class Tracker:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.con = sqlite3.connect(str(path), check_same_thread=False)
         self.con.executescript(SCHEMA)
+        for table, cols in ADDED_COLUMNS.items():
+            have = {r[1] for r in self.con.execute(f"pragma table_info({table})")}
+            for col, kind in cols.items():
+                if col not in have:
+                    self.con.execute(f"alter table {table} add column {col} {kind}")
 
     def record_plan(
         self,
@@ -59,13 +85,43 @@ class Tracker:
             )
 
     def record_review(
-        self, episode_id: str, decision: str, reviewer: str, check_ins: list[str]
+        self,
+        episode_id: str,
+        decision: str,
+        reviewer: str,
+        check_ins: list[str],
+        *,
+        review_seconds: float | None = None,
+        flags: int = 0,
+        flags_real: str | None = None,
+        script_edit: float | None = None,
+        brief_edit: float | None = None,
+        fields_edited: Sequence[str] = (),
+        note: str = "",
     ) -> None:
+        """The decision, plus the pilot measures: edit shares are 0-1 (None when rejected)."""
         status = {"approve": "approved", "edit": "approved", "reject": "rejected"}[decision]
+        now = datetime.now().isoformat(timespec="seconds")
         with self.con:
             self.con.execute(
                 "update discharges set status=?, reviewer=?, decided_at=? where episode_id=?",
-                (status, reviewer, datetime.now().isoformat(timespec="seconds"), episode_id),
+                (status, reviewer, now, episode_id),
+            )
+            self.con.execute(
+                "insert or replace into reviews values (?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    episode_id,
+                    decision,
+                    reviewer,
+                    now,
+                    review_seconds,
+                    flags,
+                    flags_real,
+                    script_edit,
+                    brief_edit,
+                    json.dumps(list(fields_edited)),
+                    note,
+                ),
             )
             if status == "approved":
                 self.con.executemany(
@@ -96,8 +152,7 @@ class Tracker:
             )
 
     def record_outcome(self, episode_id: str, **fields: str | int | None) -> None:
-        allowed = {"contacted_at", "visit_scheduled", "visit_attended", "readmitted"}
-        bad = set(fields) - allowed
+        bad = set(fields) - OUTCOME_FIELDS
         if bad:
             raise ValueError(f"unknown outcome fields: {sorted(bad)}")
         cols = ", ".join(fields)
@@ -108,6 +163,14 @@ class Tracker:
                 f"on conflict(episode_id) do update set {updates}",
                 (episode_id, *fields.values()),
             )
+
+    def outcome(self, episode_id: str) -> dict[str, str | int | None]:
+        """The recorded outcome fields for one discharge (empty if none yet)."""
+        cur = self.con.execute("select * from outcomes where episode_id=?", (episode_id,))
+        row = cur.fetchone()
+        if row is None:
+            return {}
+        return {d[0]: v for d, v in zip(cur.description, row, strict=True) if d[0] != "episode_id"}
 
     def summary(self) -> dict[str, int]:
         rows = self.con.execute(

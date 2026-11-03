@@ -78,14 +78,16 @@ def bootstrap(
     pairs: list[tuple[DischargeExtraction | None, DischargeExtraction]],
     n_boot: int = 1000,
     seed: int = 0,
+    fields: tuple[str, ...] = FIELDS,
 ) -> dict[str, tuple[float, float]]:
     """95% percentile CIs for relaxed micro-F1 and per-field relaxed F1 (resampling notes)."""
     rng = np.random.default_rng(seed)
     draws: dict[str, list[float]] = {}
     for _ in range(n_boot):
-        rep = evaluate([pairs[i] for i in rng.integers(0, len(pairs), len(pairs))]).summary()
+        sample = [pairs[i] for i in rng.integers(0, len(pairs), len(pairs))]
+        rep = evaluate(sample, fields).summary()
         relaxed: dict[str, dict[str, float]] = rep["relaxed"]  # type: ignore[assignment]
-        for k in (*FIELDS, "micro"):
+        for k in (*fields, "micro"):
             draws.setdefault(k, []).append(relaxed[k]["f1"])
     return {
         k: (float(np.percentile(v, 2.5)), float(np.percentile(v, 97.5))) for k, v in draws.items()

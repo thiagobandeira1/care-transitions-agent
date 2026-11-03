@@ -1,8 +1,9 @@
 """MIMIC-IV-Note extraction baselines (M6). Runs locally only and prints aggregates only.
 
 Runs zero-shot or few-shot extraction on the gold-set notes (MIMIC_WORK_DIR/gold/, written by
-`gold-export`) and scores it against their silver labels (prefill.json) now, or against the gold
-labels (gold.json) once annotated. Few-shot examples come from the train split only. Predictions
+`gold-export`) and scores it against their silver labels (prefill.json), the hand-labeled gold
+(gold.json), or the labels filled in with Claude (claude.json, a model-made second reference).
+Few-shot examples come from the train split only. Predictions
 go to MIMIC_WORK_DIR/preds/, outside the repository; only aggregate metrics go to evals/results/.
 Error messages can quote model output, so they stay in the local predictions file; results keep
 only the error type. The rules baseline against gold is `gold-check`'s silver_vs_gold.
@@ -14,9 +15,10 @@ from typing import Any
 
 import pandas as pd
 
+from .annotate import common_fields
 from .bench import REPO
 from .benchmark import bootstrap
-from .extract_eval import evaluate
+from .extract_eval import FIELDS, evaluate
 from .extraction import DischargeExtraction
 from .extractor import Example, Extractor
 from .llm import OllamaLLM, StructuredLLM
@@ -27,13 +29,14 @@ SHOT_CHARS = (1500, 4000)
 SHOT_POOL = 5000
 # MIMIC answers list ~11 medications; 1,500 tokens (the drafting cap) can cut them off
 NUM_PREDICT = 3000
+REFERENCES = {"silver": "prefill.json", "gold": "gold.json", "claude": "claude.json"}
 
 
 def gold_notes(work_dir: Path, ref: str) -> list[tuple[str, str, DischargeExtraction]]:
-    """(folder, model input, reference) per gold-set note; `ref` is 'silver' or 'gold'."""
+    """(folder, model input, reference) per gold-set note; `ref` is a key of REFERENCES."""
     out = []
     for d in sorted(p for p in (work_dir / "gold").iterdir() if p.is_dir()):
-        path = d / ("prefill.json" if ref == "silver" else "gold.json")
+        path = d / REFERENCES[ref]
         if not path.exists():
             continue
         try:
@@ -118,6 +121,12 @@ def run(
 
     failures: dict[str, int] = {}
     pairs: list[tuple[DischargeExtraction | None, DischargeExtraction]] = []
+    # hand labels cover only the fields they list; the other references cover every field
+    fields = (
+        common_fields(work_dir / "gold" / folder / "gold.json" for folder, _, _ in notes)
+        if ref == "gold"
+        else FIELDS
+    )
     for row, (_, _, label) in zip(rows, notes, strict=True):
         if row["pred"] is None:
             kind = str(row["error"]).split(":", 1)[0]
@@ -135,8 +144,8 @@ def run(
         "schema_failures": sum(failures.values()),
         "failure_types": failures,
         "seconds_per_note": sum(r["seconds"] for r in rows) / max(len(rows), 1),
-        **evaluate(pairs).summary(),
-        "relaxed_f1_ci95": bootstrap(pairs) if pairs else {},
+        **evaluate(pairs, fields).summary(),
+        "relaxed_f1_ci95": bootstrap(pairs, fields=fields) if pairs else {},
     }
     if limit is None:
         out = REPO / "evals" / "results"

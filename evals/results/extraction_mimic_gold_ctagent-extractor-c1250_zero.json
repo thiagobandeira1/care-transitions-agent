@@ -1,0 +1,64 @@
+{
+  "benchmark": "MIMIC-IV-Note gold-set notes, gold labels",
+  "mode": "zero",
+  "model": "ctagent-extractor-c1250",
+  "n": 51,
+  "few_shot_examples": 0,
+  "rescored": true,
+  "schema_failures": 0,
+  "failure_types": {},
+  "seconds_per_note": 5.438373205882004,
+  "fields": [
+    "principal_diagnosis",
+    "secondary_diagnoses"
+  ],
+  "exact": {
+    "principal_diagnosis": {
+      "precision": 0.94,
+      "recall": 0.9215686274509803,
+      "f1": 0.9306930693069307
+    },
+    "secondary_diagnoses": {
+      "precision": 0.9009009009009009,
+      "recall": 0.9433962264150944,
+      "f1": 0.9216589861751152
+    },
+    "micro": {
+      "precision": 0.9130434782608695,
+      "recall": 0.9363057324840764,
+      "f1": 0.9245283018867924
+    }
+  },
+  "relaxed": {
+    "principal_diagnosis": {
+      "precision": 0.98,
+      "recall": 0.9607843137254902,
+      "f1": 0.9702970297029702
+    },
+    "secondary_diagnoses": {
+      "precision": 0.9099099099099099,
+      "recall": 0.9528301886792453,
+      "f1": 0.9308755760368664
+    },
+    "micro": {
+      "precision": 0.9316770186335404,
+      "recall": 0.9554140127388535,
+      "f1": 0.9433962264150944
+    }
+  },
+  "med_change_type_accuracy": 0.8734177215189873,
+  "relaxed_f1_ci95": {
+    "principal_diagnosis": [
+      0.92,
+      1.0
+    ],
+    "secondary_diagnoses": [
+      0.8582052543912779,
+      0.979606991311376
+    ],
+    "micro": [
+      0.8936080564188381,
+      0.9838314514410932
+    ]
+  }
+}

@@ -8,8 +8,11 @@ python -m ctagent extract-bench --mode zero|few|rules [--model qwen3:8b] [--resc
 python -m ctagent mimic-prep                       # local only; prints aggregates
 python -m ctagent gold-export --n 200 --overlap 50 / gold-check   # local annotation
 python -m ctagent gold-demo --n 10 --overlap 3 [--gold-dir data/gold-demo]   # practice set
-python -m ctagent mimic-bench --mode zero|few --model qwen3:8b [--ref gold] [--limit 5] [--rescore]
-python -m ctagent demo --n 10 [--workspace data/demo]   # morning batch for the review screen
+python -m ctagent mimic-bench --mode zero|few --model qwen3:8b [--ref gold|claude] [--rescore]
+python -m ctagent mimic-drafts --model qwen3:14b [--extractor qwen3-14b_zero] [--limit 3]
+python -m ctagent mimic-risk [--boot 1000]   # LACE tiers vs 30-day readmission (MIMIC-IV)
+python -m ctagent demo --n 10 [--workspace data/demo] [--practice ... --coordinator ...] [--seed 29]
+python -m ctagent pilot-report [--workspace data/demo] [--date 2026-12-01]   # pilot measures
 """
 
 import argparse
@@ -92,7 +95,10 @@ def main(argv: list[str] | None = None) -> None:
             "gold-check",
             "gold-demo",
             "mimic-bench",
+            "mimic-drafts",
+            "mimic-risk",
             "demo",
+            "pilot-report",
         ],
     )
     p.add_argument(
@@ -105,11 +111,18 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--db", type=Path, default=Path("data/tracking.sqlite"))
     p.add_argument("--mode", choices=["zero", "few", "rules"], default="zero")
     p.add_argument("--overlap", type=int, default=50)
-    p.add_argument("--ref", choices=["silver", "gold"], default="silver")
+    p.add_argument("--ref", choices=["silver", "gold", "claude"], default="silver")
     p.add_argument("--limit", type=int, default=None, help="smoke test: first N notes, not saved")
     p.add_argument(
         "--rescore", action="store_true", help="score saved predictions again (no model calls)"
     )
+    p.add_argument(
+        "--extractor", default="qwen3-14b_zero", help="saved MIMIC predictions the drafts use"
+    )
+    p.add_argument("--boot", type=int, default=1000, help="bootstrap resamples (mimic-risk)")
+    p.add_argument("--seed", type=int, default=29, help="which Synthea discharges (demo)")
+    p.add_argument("--practice", default="", help="practice name for the drafts (demo)")
+    p.add_argument("--coordinator", default="", help="coordinator name for the drafts (demo)")
     p.add_argument("--workspace", type=Path, default=Path("data/demo"))
     p.add_argument("--gold-dir", type=Path, default=Path("data/gold-demo"))
     p.add_argument("--date", type=date.fromisoformat, default=date.today())
@@ -139,12 +152,24 @@ def main(argv: list[str] | None = None) -> None:
         from .llm import drafting_llm
         from .review import Workspace, open_graph, pending, process
 
-        events, ctx = sample_discharges(args.synthea, args.n, seed=29)
+        events, ctx = sample_discharges(args.synthea, args.n, seed=args.seed)
         graph, tracker = open_graph(
-            Workspace(args.workspace), drafting_llm(args.model), lambda e: ctx[e.episode_id]
+            Workspace(args.workspace),
+            drafting_llm(args.model),
+            lambda e: ctx[e.episode_id],
+            practice=args.practice,
+            coordinator=args.coordinator,
         )
         done = process(graph, events)
         print(f"processed {done} discharges; pending review: {len(pending(tracker))}")
+    elif args.command == "pilot-report":
+        from .pilot import report
+        from .review import Workspace
+
+        db = Workspace(args.workspace).tracking
+        if not db.exists():
+            raise SystemExit(f"no tracking database at {db}")
+        print(json.dumps(report(Tracker(db), args.date), indent=2))
     elif args.command in ("gold-export", "gold-check"):
         from .gold import check, export
         from .mimic import MimicPaths
@@ -163,6 +188,19 @@ def main(argv: list[str] | None = None) -> None:
         work = MimicPaths.from_env().work_dir
         res = run(work, args.mode, args.model, args.ref, args.limit, rescore=args.rescore)
         print(json.dumps(res, indent=2))
+    elif args.command == "mimic-drafts":
+        from .mimic import MimicPaths
+        from .mimic_agent import run as run_drafts
+
+        paths = MimicPaths.from_env()
+        res = run_drafts(paths.work_dir, paths.hosp_dir, args.model, args.extractor, args.limit)
+        print(json.dumps(res, indent=2))
+    elif args.command == "mimic-risk":
+        from .mimic import MimicPaths
+        from .mimic_risk import run as run_risk
+
+        paths = MimicPaths.from_env()
+        print(json.dumps(run_risk(paths.work_dir, paths.hosp_dir, args.boot), indent=2))
     elif args.command == "extract-bench":
         from .benchmark import score
 

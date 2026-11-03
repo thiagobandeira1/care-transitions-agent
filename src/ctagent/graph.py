@@ -30,6 +30,7 @@ from .drafts import (
 )
 from .llm import CallResult, StructuredLLM, call_with_retry, field_guide
 from .models import DischargeEvent, FollowUpPlan, PatientContext, RiskScore
+from .pilot import review_edits
 from .rules import DEFAULT_RULES, PlanRules, plan_follow_up
 from .scoring import score_discharge
 from .tracking import Tracker
@@ -59,6 +60,9 @@ class ReviewDecision(BaseModel):
     call_script: CallScript | None = None  # replacement drafts when decision == "edit"
     brief: ProviderBrief | None = None
     note: str = ""
+    # pilot measures, filled in by the review screen
+    seconds: float | None = None  # time the reviewer spent on this discharge
+    flags_real: Literal["yes", "no", "some"] | None = None  # were the flags real problems?
 
 
 @dataclass
@@ -68,9 +72,20 @@ class Deps:
     tracker: Tracker
     rules: PlanRules = DEFAULT_RULES
     extractor: Callable[[str], BaseModel] | None = None
+    practice: str = ""  # named in the drafts instead of placeholders
+    coordinator: str = ""
 
 
 def build_graph(deps: Deps, checkpointer: BaseCheckpointSaver[Any]) -> CompiledStateGraph[Any]:
+    who = " ".join(
+        f"{label}: {name}."
+        for label, name in (("Practice", deps.practice), ("Coordinator", deps.coordinator))
+        if name
+    )
+
+    def prompt(s: State, p: FollowUpPlan, task: str, schema: type[BaseModel]) -> str:
+        return _prompt(s, p, task, schema) + (f"\n\nWRITER\n{who}" if who else "")
+
     def event_of(s: State) -> DischargeEvent:
         return DischargeEvent.model_validate(s["event"])
 
@@ -97,10 +112,8 @@ def build_graph(deps: Deps, checkpointer: BaseCheckpointSaver[Any]) -> CompiledS
     def plan(s: State) -> dict[str, Any]:
         ev, risk = event_of(s), RiskScore.model_validate(s["score"])
         p = plan_follow_up(ev.discharge.date(), risk, ev.disposition, deps.rules)
-        prompt = _prompt(
-            s, p, "Explain the follow-up tier and next steps for the coordinator.", PlanExplanation
-        )
-        r = call_with_retry(deps.llm, PlanExplanation, SYSTEM, prompt)
+        task = "Explain the follow-up tier and next steps for the coordinator."
+        r = call_with_retry(deps.llm, PlanExplanation, SYSTEM, prompt(s, p, task, PlanExplanation))
         out: dict[str, Any] = {"plan": p.model_dump(mode="json"), "llm_seconds": r.seconds}
         if r.value is None:
             out |= {
@@ -119,7 +132,7 @@ def build_graph(deps: Deps, checkpointer: BaseCheckpointSaver[Any]) -> CompiledS
             deps.llm,
             CallScript,
             SYSTEM,
-            _prompt(
+            prompt(
                 s,
                 p,
                 "Write the coordinator's phone call script for this patient, plain language.",
@@ -130,7 +143,7 @@ def build_graph(deps: Deps, checkpointer: BaseCheckpointSaver[Any]) -> CompiledS
             deps.llm,
             ProviderBrief,
             SYSTEM,
-            _prompt(
+            prompt(
                 s,
                 p,
                 "Write a one-page brief for the provider seeing this patient after discharge.",
@@ -176,21 +189,38 @@ def build_graph(deps: Deps, checkpointer: BaseCheckpointSaver[Any]) -> CompiledS
             }
         )
         d = ReviewDecision.model_validate(raw)
-        out: dict[str, Any] = {"review": d.model_dump(mode="json"), "status": d.decision}
+        out: dict[str, Any] = {"status": d.decision}
         if d.decision == "edit":
             if d.call_script is not None:
                 out["call_script"] = d.call_script.model_dump(mode="json")
             if d.brief is not None:
                 out["brief"] = d.brief.model_dump(mode="json")
+        # how much the reviewer changed, measured against the drafts as written
+        edits = review_edits(
+            d.decision,
+            (s.get("call_script"), out.get("call_script", s.get("call_script"))),
+            (s.get("brief"), out.get("brief", s.get("brief"))),
+        )
+        out["review"] = d.model_dump(mode="json") | edits | {"flags": len(s.get("flags", []))}
         return out
 
     def track(s: State) -> dict[str, Any]:
-        review = s["review"]
+        r = s["review"]
         check_ins = [str(x) for x in s["plan"]["check_ins"]]
         deps.tracker.record_review(
-            s["event"]["episode_id"], review["decision"], review["reviewer"], check_ins
+            s["event"]["episode_id"],
+            r["decision"],
+            r["reviewer"],
+            check_ins,
+            review_seconds=r.get("seconds"),
+            flags=r.get("flags", 0),
+            flags_real=r.get("flags_real"),
+            script_edit=r.get("script_edit"),
+            brief_edit=r.get("brief_edit"),
+            fields_edited=r.get("fields_edited", []),
+            note=r.get("note", ""),
         )
-        return {"status": "approved" if review["decision"] != "reject" else "rejected"}
+        return {"status": "approved" if r["decision"] != "reject" else "rejected"}
 
     g = StateGraph(State)
     steps: list[tuple[str, Callable[[State], dict[str, Any]]]] = [

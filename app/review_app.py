@@ -7,6 +7,7 @@ uv run streamlit run app/review_app.py -- --workspace data/demo
 import argparse
 import json
 import sys
+import time
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -19,7 +20,17 @@ from ctagent.drafts import CallScript, ProviderBrief
 from ctagent.graph import ReviewDecision
 from ctagent.llm import drafting_llm
 from ctagent.models import DischargeEvent, PatientContext
-from ctagent.review import Workspace, decide, open_graph, pending, review_payload
+from ctagent.review import (
+    Workspace,
+    decide,
+    draft_from_form,
+    draft_to_form,
+    follow_ups,
+    open_graph,
+    outcome_fields,
+    pending,
+    review_payload,
+)
 from ctagent.tracking import Tracker
 
 
@@ -71,6 +82,7 @@ def review_tab(graph: CompiledStateGraph[Any], tracker: Tracker, reviewer: str) 
     if payload is None:
         st.warning("This discharge is not waiting for review.")
         return
+    started = st.session_state.setdefault(f"t0-{ep}", time.time())  # review time, for the pilot
     plan = payload["plan"]
     tier = "🔴 HIGH" if payload["tier"] == "high" else "🟢 standard"
     st.subheader(f"{tier} · LACE {payload['lace']}")
@@ -91,33 +103,90 @@ def review_tab(graph: CompiledStateGraph[Any], tracker: Tracker, reviewer: str) 
         st.markdown("### Provider brief")
         if payload["brief"]:
             show_brief(payload["brief"])
-    with st.expander("Edit drafts (JSON)"):
-        script_txt = st.text_area(
-            "Call script", json.dumps(payload["call_script"], indent=2), height=240
+    forms: dict[str, dict[str, str]] = {}
+    with st.expander("Edit drafts"):
+        st.caption(
+            "One item per line. Medications: name | started, stopped, dose_changed or continued "
+            "| note. Then click Approve with edits."
         )
-        brief_txt = st.text_area(
-            "Provider brief", json.dumps(payload["brief"], indent=2), height=240
+        for col, (doc, title) in zip(
+            st.columns(2),
+            (("call_script", "Call script"), ("brief", "Provider brief")),
+            strict=True,
+        ):
+            col.markdown(f"**{title}**")
+            forms[doc] = {
+                k: col.text_area(
+                    k.replace("_", " ").capitalize(),
+                    v,
+                    height=68 if "\n" not in v and len(v) < 80 else 140,
+                    key=f"{doc}-{ep}-{k}",
+                )
+                for k, v in draft_to_form(payload[doc]).items()
+            }
+    real = None
+    if payload["flags"]:
+        real = st.radio(
+            "Were these flags real problems?", ["yes", "some", "no"], index=None, horizontal=True
         )
     note = st.text_input("Note (required to reject)")
     a, b, c = st.columns(3)
     decision: ReviewDecision | None = None
+    common: dict[str, Any] = {"reviewer": reviewer, "flags_real": real}
     if a.button("✅ Approve", disabled=not reviewer):
-        decision = ReviewDecision(decision="approve", reviewer=reviewer)
+        decision = ReviewDecision(decision="approve", **common)
     if b.button("✏️ Approve with edits", disabled=not reviewer):
         try:
             decision = ReviewDecision(
                 decision="edit",
-                reviewer=reviewer,
-                call_script=CallScript.model_validate_json(script_txt),
-                brief=ProviderBrief.model_validate_json(brief_txt),
+                call_script=draft_from_form(CallScript, forms["call_script"])
+                if payload["call_script"]
+                else None,
+                brief=draft_from_form(ProviderBrief, forms["brief"]) if payload["brief"] else None,
+                **common,
             )
         except ValidationError as e:
-            st.error(f"Edited JSON doesn't match the schema: {e.error_count()} problem(s)")
+            st.error(f"Not saved: {e.error_count()} problem(s) in the edits.")
+            for err in e.errors():
+                st.write(f"- {' → '.join(map(str, err['loc']))}: {err['msg']}")
     if c.button("❌ Reject", disabled=not (reviewer and note)):
-        decision = ReviewDecision(decision="reject", reviewer=reviewer, note=note)
+        decision = ReviewDecision(decision="reject", note=note, **common)
     if decision is not None:
+        decision.seconds = round(time.time() - started, 1)
         st.success(f"Saved: {decide(graph, ep, decision)}")
         st.rerun()
+
+
+def _day(value: object) -> date | None:
+    return date.fromisoformat(str(value)[:10]) if value else None
+
+
+def follow_up_tab(tracker: Tracker) -> None:
+    rows = follow_ups(tracker)
+    if not rows:
+        st.info("No approved discharges yet.")
+        return
+    st.dataframe(rows, hide_index=True)
+    ep = st.selectbox("Discharge", [r["episode_id"] for r in rows], key="follow-up")
+    now = tracker.outcome(ep)
+    readmit = {1: "yes", 0: "no"}.get(now.get("readmitted"), "not known")
+    with st.form(f"outcome-{ep}"):
+        a, b, c = st.columns(3)
+        contacted = a.date_input("Interactive contact on", _day(now.get("contacted_at")))
+        attempts = b.number_input("Contact attempts", 0, value=now.get("contact_attempts"))
+        minutes = c.number_input("Minutes on the phone", 0, value=now.get("contact_minutes"))
+        d, e, f = st.columns(3)
+        scheduled = d.date_input("Visit scheduled for", _day(now.get("visit_scheduled")))
+        attended = e.date_input("Visit attended on", _day(now.get("visit_attended")))
+        options = ["not known", "no", "yes"]
+        readmitted = f.selectbox("Readmitted within 30 days", options, options.index(readmit))
+        if st.form_submit_button("Save"):
+            tracker.record_outcome(
+                ep,
+                **outcome_fields(contacted, attempts, minutes, scheduled, attended, readmitted),
+            )
+            st.success("Saved.")
+            st.rerun()
 
 
 def check_in_tab(tracker: Tracker) -> None:
@@ -147,9 +216,11 @@ def main() -> None:
     graph, tracker = load(args.workspace, args.model)
     reviewer = st.sidebar.text_input("Your name (recorded with each decision)")
     st.sidebar.write(tracker.summary())
-    queue_tab, checkin_tab = st.tabs(["Review queue", "Check-ins due"])
+    queue_tab, followup_tab, checkin_tab = st.tabs(["Review queue", "Follow-up", "Check-ins due"])
     with queue_tab:
         review_tab(graph, tracker, reviewer)
+    with followup_tab:
+        follow_up_tab(tracker)
     with checkin_tab:
         check_in_tab(tracker)
 

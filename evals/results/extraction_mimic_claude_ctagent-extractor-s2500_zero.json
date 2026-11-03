@@ -1,0 +1,116 @@
+{
+  "benchmark": "MIMIC-IV-Note gold-set notes, claude labels",
+  "mode": "zero",
+  "model": "ctagent-extractor-s2500",
+  "n": 200,
+  "few_shot_examples": 0,
+  "rescored": true,
+  "schema_failures": 0,
+  "failure_types": {},
+  "seconds_per_note": 4.684583301999883,
+  "exact": {
+    "principal_diagnosis": {
+      "precision": 0.75,
+      "recall": 0.735,
+      "f1": 0.7424242424242425
+    },
+    "secondary_diagnoses": {
+      "precision": 0.7202643171806168,
+      "recall": 0.7898550724637681,
+      "f1": 0.7534562211981568
+    },
+    "medication_changes": {
+      "precision": 0.48114075436982523,
+      "recall": 0.4447278911564626,
+      "f1": 0.4622182942996023
+    },
+    "follow_up": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "pending_tests": {
+      "precision": 0.013513513513513514,
+      "recall": 0.022727272727272728,
+      "f1": 0.016949152542372885
+    },
+    "red_flags": {
+      "precision": 0.18082191780821918,
+      "recall": 0.13664596273291926,
+      "f1": 0.1556603773584906
+    },
+    "micro": {
+      "precision": 0.4863622433343549,
+      "recall": 0.4153362993980633,
+      "f1": 0.44805194805194803
+    }
+  },
+  "relaxed": {
+    "principal_diagnosis": {
+      "precision": 0.8418367346938775,
+      "recall": 0.825,
+      "f1": 0.8333333333333333
+    },
+    "secondary_diagnoses": {
+      "precision": 0.7907488986784141,
+      "recall": 0.8671497584541062,
+      "f1": 0.8271889400921659
+    },
+    "medication_changes": {
+      "precision": 0.6596136154553818,
+      "recall": 0.6096938775510204,
+      "f1": 0.6336721166593018
+    },
+    "follow_up": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "pending_tests": {
+      "precision": 0.08108108108108109,
+      "recall": 0.13636363636363635,
+      "f1": 0.10169491525423728
+    },
+    "red_flags": {
+      "precision": 0.3698630136986301,
+      "recall": 0.2795031055900621,
+      "f1": 0.31839622641509435
+    },
+    "micro": {
+      "precision": 0.6432730615997548,
+      "recall": 0.5493326354357498,
+      "f1": 0.5926030491247882
+    }
+  },
+  "med_change_type_accuracy": 0.7513199577613516,
+  "relaxed_f1_ci95": {
+    "principal_diagnosis": [
+      0.778604749787956,
+      0.883248730964467
+    ],
+    "secondary_diagnoses": [
+      0.7660923063912556,
+      0.8844352642625098
+    ],
+    "medication_changes": [
+      0.5863314540619112,
+      0.6813240342683944
+    ],
+    "follow_up": [
+      0.0,
+      0.0
+    ],
+    "pending_tests": [
+      0.01665983606557377,
+      0.21432072829131651
+    ],
+    "red_flags": [
+      0.20799559902200487,
+      0.42789430593327726
+    ],
+    "micro": [
+      0.5542018105590885,
+      0.6302566095997284
+    ]
+  }
+}

@@ -8,6 +8,8 @@ import pytest
 
 from ctagent.__main__ import main
 from ctagent.annotate import (
+    HAND_FIELDS,
+    checked_fields,
     from_form,
     next_todo,
     notes,
@@ -19,6 +21,7 @@ from ctagent.annotate import (
     synthetic_gold,
     to_rows,
 )
+from ctagent.extract_eval import FIELDS
 from ctagent.extraction import Diagnosis, DischargeExtraction
 from ctagent.gold import check
 
@@ -49,7 +52,19 @@ def test_first_pass_opens_prefill_saves_and_resumes(tmp_path: Path) -> None:
     assert path.name == "gold.json"
     assert (saved["minutes"], saved["saved_at"]) == (3.2, "2026-11-01T09:30:00")
     assert not list(ns[0].folder.glob("*.tmp"))
-    assert start_labels(ns[0], second=False) == (edited, 3.2, False)
+    # only the hand-labeled fields are kept; the rest are saved empty and not listed
+    assert saved["fields"] == list(HAND_FIELDS) and saved["red_flags"] == []
+    kept = edited.model_copy(
+        update={
+            "medication_changes": [],
+            "follow_up": [],
+            "pending_tests": [],
+            "red_flags": [],
+        }
+    )
+    assert start_labels(ns[0], second=False) == (kept, 3.2, False)
+    assert checked_fields(path) == HAND_FIELDS
+    assert checked_fields(ns[0].folder / "prefill.json") == FIELDS  # no `fields` key: all
     assert status(ns[0], False, DAY1.date()) == "done"
     assert next_todo(ns, False, DAY1.date()) == ns[1]
 
@@ -99,6 +114,7 @@ def test_second_pass_waits_two_weeks_and_never_sees_the_first(tmp_path: Path) ->
         "notes": 2,
         "first_pass_done": 1,
         "overlap_notes": 1,
+        "first_pass_overlap_done": 1,
         "second_pass_done": 0,
         "second_pass_open": 1,
     }
@@ -106,6 +122,29 @@ def test_second_pass_waits_two_weeks_and_never_sees_the_first(tmp_path: Path) ->
     save(ns[0], prefill, 4.0, second=True, now=datetime(2026, 11, 15, 10))
     assert status(ns[0], True, date(2026, 11, 15)) == "done"
     assert check(tmp_path)["double_annotated"] == 1
+
+
+def test_claude_labels_stay_out_of_the_hand_pass(tmp_path: Path) -> None:
+    ns = notes(practice(tmp_path, n=3, overlap=1) / "gold")
+    prefill, _, _ = start_labels(ns[0], second=False)
+    claude = prefill.model_copy(
+        update={"principal_diagnosis": Diagnosis(text="zz not in any note"), "red_flags": ["zz"]}
+    )
+    for n in ns:
+        (n.folder / "claude.json").write_text(claude.model_dump_json())
+    assert start_labels(ns[0], second=False) == (prefill, 0.0, False)  # never opens claude.json
+    assert status(ns[0], False, DAY1.date()) == "todo"
+
+    save(ns[1], prefill, 6.0, second=False, now=DAY1)  # a non-overlap note done first
+    assert next_todo(ns, False, DAY1.date()) == ns[0]  # the overlap note still comes first
+    save(ns[0], prefill, 6.0, second=False, now=DAY1)
+    out = check(tmp_path)
+    assert (out["annotated"], out["claude_labeled"]) == (2, 3)
+    assert out["gold_fields"] == list(HAND_FIELDS)
+    agree = out["claude_vs_gold"]
+    assert agree["n"] == 2 and agree["fields"] == list(HAND_FIELDS)
+    assert "red_flags" not in agree["exact"]  # not hand-labeled, so not scored
+    assert agree["exact"]["principal_diagnosis"]["precision"] < 1.0
 
 
 def test_broken_saved_file_reopens_from_prefill(tmp_path: Path) -> None:

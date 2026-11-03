@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from ctagent.annotate import (
+    HAND_FIELDS,
     SECOND_PASS_DAYS,
     TABLES,
     Note,
@@ -118,6 +119,8 @@ def form(note: Note, second: bool, all_notes: list[Note], today: date, pick_key:
 
     rows: dict[str, list[dict[str, Any]]] = {}
     for field, items in to_rows(start).items():
+        if field not in HAND_FIELDS:
+            continue
         st.markdown(f"**{TITLES[field]}**", help=HELP[field])
         edited = st.data_editor(
             pd.DataFrame(items, columns=list(TABLES[field]), dtype=object),
@@ -129,7 +132,10 @@ def form(note: Note, second: bool, all_notes: list[Note], today: date, pick_key:
         rows[field] = edited.to_dict("records")
 
     minutes = prior_minutes + (time.time() - started) / 60
-    st.caption(f"Time on this note: {minutes:.1f} min (saved with the annotation)")
+    st.caption(
+        "Only the diagnoses are labeled by hand; the other fields are scored against Claude's "
+        f"labels. Time on this note: {minutes:.1f} min (saved with the labels)."
+    )
     a, b = st.columns(2)
     save_next = a.button("💾 Save and next", type="primary", width="stretch")
     save_only = b.button("Save", width="stretch")
@@ -175,7 +181,13 @@ def main() -> None:
                 "days after its first pass, starting again from the prefill."
             )
         else:
-            st.metric("First pass done", f"{pr['first_pass_done']} / {pr['notes']}")
+            st.metric(
+                "Overlap notes done", f"{pr['first_pass_overlap_done']} / {pr['overlap_notes']}"
+            )
+            st.caption(
+                f"All notes: {pr['first_pass_done']} / {pr['notes']}. Next to do opens the "
+                "overlap notes first. Label by hand, with no AI tool open."
+            )
         work = queue(all_notes, second)
         if not work:
             st.info("No overlap notes in this folder.")
