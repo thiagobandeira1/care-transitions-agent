@@ -59,6 +59,16 @@ def test_build_and_score_all_modes(bench_env: Path, tmp_path: Path) -> None:
     assert (tmp_path / "evals" / "results" / "extraction_synthetic_rules.json").exists()
 
 
+def test_bootstrap_keeps_a_patients_notes_together() -> None:
+    a = DischargeExtraction.model_validate({"principal_diagnosis": {"text": "Pneumonia"}})
+    b = DischargeExtraction.model_validate({"principal_diagnosis": {"text": "Sepsis"}})
+    pairs = [(a, a), (b, a), (a, a), (None, b)]
+    by_note = bm.bootstrap(pairs, n_boot=200)
+    assert bm.bootstrap(pairs, n_boot=200, groups=["1", "2", "3", "4"]) == by_note
+    lo, hi = bm.bootstrap(pairs, n_boot=200, groups=["p"] * 4)["micro"]  # every draw is all 4
+    assert lo == hi == pytest.approx(4 / 7)  # 2 true positives, 1 false positive, 2 missed
+
+
 def test_rescore_scores_saved_predictions_without_the_model(
     bench_env: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

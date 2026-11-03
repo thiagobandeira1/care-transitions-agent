@@ -667,11 +667,18 @@ name>"`. M10 was rerun with these changes.
        Mendez, MD, and the practice for testing the prototype.
      - It covers the public-data work (risk tiers, extraction, drafts) and describes the board in words; the
        session and the board counts are next steps for version 2.
-   - **PDF:** `uv run --with markdown python paper/build_pdf.py` builds `paper/manuscript.pdf` (16 pages). Its
-     tables were copied from a local working draft (not in the repo) whose tables were checked against
-     `evals/results/`.
+   - **PDF:** `uv run --with markdown python paper/build_pdf.py` builds `paper/manuscript.pdf` (22 pages, with
+     page numbers). Its tables were checked against `evals/results/`.
    - **Figure 1:** `uv run --with matplotlib python paper/figure1.py`.
-   - **Still needed:** the correspondence email.
+   - **Final version 1** (2026-11-02, tagged `v1-preprint`):
+     - It is framed as a retrospective component evaluation. Table 1 separates the TCM requirements from the
+       practice's scheduling rules.
+     - It adds Table 7 (potential false starts per model) and Appendices A-C (reproducibility details, a
+       table-to-results map, and a TRIPOD+AI / TRIPOD-LLM summary).
+     - `uv run python scripts/paper_extras.py` writes `evals/results/paper_extras.json`: Table 7, the paired
+       bootstrap differences, reference support, macro F1, and the rules' rows in Tables 5-6.
+     - The synthetic benchmark's CIs now resample patients (`extract-bench --rescore`). The point estimates are
+       unchanged, and the intervals moved by at most 0.003.
 2. **Gold set** (paper 2's reference): done for this round (Finding 3).
    - `gold.json`: 51 notes hand-labeled on the diagnoses (2026-11-02). Medication changes were dropped from
      the hand reference (see `docs/ANNOTATION.md`).

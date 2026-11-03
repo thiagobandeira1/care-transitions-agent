@@ -13,7 +13,9 @@ import markdown
 HERE = Path(__file__).resolve().parent
 EDGE = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
 CSS = """
-@page { size: Letter; margin: 2.2cm 2.2cm 2.4cm 2.2cm; }
+@page { size: Letter; margin: 2.2cm 2.2cm 2.4cm 2.2cm;
+        @bottom-center { content: counter(page); font: 9pt "Times New Roman", serif;
+                         color: #555; } }
 body { font-family: "Times New Roman", Georgia, serif; font-size: 11pt; line-height: 1.45;
        color: #111; }
 h1 { font-size: 17pt; line-height: 1.25; margin: 0 0 10pt; }
@@ -30,8 +32,8 @@ th, td { border-top: 0.5pt solid #bbb; border-bottom: 0.5pt solid #bbb; padding:
 th { background: #f1f1f1; }
 img { width: 100%; margin: 4pt 0 2pt; }
 code { font-family: Consolas, monospace; font-size: 9.5pt; }
-p:has(> strong:first-child) { break-inside: avoid; }
-/* captions stay with their tables and figures */
+/* captions stay whole and with their tables and figures */
+p:has(+ table), p:has(> img) + p { break-inside: avoid; }
 p:has(+ table), p:has(+ p > img), p:has(> img) { break-after: avoid; }
 """
 

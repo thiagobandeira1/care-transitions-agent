@@ -62,6 +62,11 @@ def check(work_dir: Path) -> dict[str, Any]:
         and (b := _load(f / "gold_b.json"))
     ]
     claude = [c for f in folders if (f / CLAUDE).exists() and (c := _load(f / CLAUDE))]
+    silver_vs_claude = [
+        (_load(f / "prefill.json"), c)
+        for f in folders
+        if (f / CLAUDE).exists() and (c := _load(f / CLAUDE))
+    ]
     claude_vs_gold = [
         (c, g)
         for f in valid
@@ -81,6 +86,8 @@ def check(work_dir: Path) -> dict[str, Any]:
         out["silver_vs_gold"] = evaluate(silver_vs_gold, fields).summary()
     if claude_vs_gold:
         out["claude_vs_gold"] = evaluate(claude_vs_gold, fields).summary()
+    if silver_vs_claude:  # the rules scored against the model-made reference, every field
+        out["silver_vs_claude"] = evaluate(silver_vs_claude).summary()
     if pairs_ab:
         twice = [f for f in valid if (f / "gold_b.json").exists()]
         ab_fields = common_fields(f / n for f in twice for n in ("gold.json", "gold_b.json"))

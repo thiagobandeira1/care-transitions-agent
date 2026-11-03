@@ -79,12 +79,21 @@ def bootstrap(
     n_boot: int = 1000,
     seed: int = 0,
     fields: tuple[str, ...] = FIELDS,
+    groups: list[str] | None = None,
 ) -> dict[str, tuple[float, float]]:
-    """95% percentile CIs for relaxed micro-F1 and per-field relaxed F1 (resampling notes)."""
+    """95% percentile CIs for relaxed micro-F1 and per-field relaxed F1.
+
+    Resamples notes, or, given `groups` (one key per pair, such as the patient), resamples the
+    groups with all of their notes, so a patient's notes move together.
+    """
     rng = np.random.default_rng(seed)
+    members: dict[str, list[int]] = {}
+    for i, g in enumerate(groups if groups is not None else map(str, range(len(pairs)))):
+        members.setdefault(g, []).append(i)
+    units = list(members.values())
     draws: dict[str, list[float]] = {}
     for _ in range(n_boot):
-        sample = [pairs[i] for i in rng.integers(0, len(pairs), len(pairs))]
+        sample = [pairs[i] for k in rng.integers(0, len(units), len(units)) for i in units[k]]
         rep = evaluate(sample, fields).summary()
         relaxed: dict[str, dict[str, float]] = rep["relaxed"]  # type: ignore[assignment]
         for k in (*fields, "micro"):
@@ -154,7 +163,9 @@ def score(
         "schema_failures": sum(p is None for p in preds),
         "seconds_per_note": sum(r["seconds"] for r in rows) / max(len(rows), 1),
         **rep.summary(),
-        "relaxed_f1_ci95": bootstrap(pairs),
+        # a few Synthea patients have two test notes, so the bootstrap resamples patients
+        "relaxed_f1_ci95": bootstrap(pairs, groups=[x["patient"] for x in test]),
+        "bootstrap": {"resamples": 1000, "seed": 0, "unit": "patient"},
     }
     out = REPO / "evals" / "results"
     out.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,215 @@
+{
+  "patients": {
+    "200-note set": {
+      "notes": 200,
+      "patients": 200
+    },
+    "51 hand-labeled": {
+      "notes": 51,
+      "patients": 51
+    }
+  },
+  "potential_false_starts": {
+    "rules": {
+      "started": 1211,
+      "flagged": 304,
+      "pairs": 301
+    },
+    "model-made reference": {
+      "started": 688,
+      "flagged": 18,
+      "share": 0.026,
+      "pairs": 17,
+      "pairs_shared_with_rules": 12
+    },
+    "ctagent-extractor_zero": {
+      "started": 1219,
+      "flagged": 316,
+      "share": 0.259,
+      "pairs": 312,
+      "pairs_shared_with_rules": 299
+    },
+    "ctagent-extractor-s2500_zero": {
+      "started": 1201,
+      "flagged": 304,
+      "share": 0.253,
+      "pairs": 299,
+      "pairs_shared_with_rules": 265
+    },
+    "ctagent-extractor-c1250_zero": {
+      "started": 1155,
+      "flagged": 294,
+      "share": 0.255,
+      "pairs": 291,
+      "pairs_shared_with_rules": 243
+    },
+    "ctagent-extractor-c2500_zero": {
+      "started": 1222,
+      "flagged": 333,
+      "share": 0.273,
+      "pairs": 329,
+      "pairs_shared_with_rules": 272
+    },
+    "qwen3-8b-local_zero": {
+      "started": 693,
+      "flagged": 60,
+      "share": 0.087,
+      "pairs": 56,
+      "pairs_shared_with_rules": 42
+    },
+    "qwen3-8b_zero": {
+      "started": 701,
+      "flagged": 49,
+      "share": 0.07,
+      "pairs": 47,
+      "pairs_shared_with_rules": 35
+    },
+    "qwen3-8b_few": {
+      "started": 843,
+      "flagged": 70,
+      "share": 0.083,
+      "pairs": 66,
+      "pairs_shared_with_rules": 46
+    },
+    "qwen3-14b_zero": {
+      "started": 765,
+      "flagged": 25,
+      "share": 0.033,
+      "pairs": 24,
+      "pairs_shared_with_rules": 22
+    },
+    "qwen3-14b_few": {
+      "started": 828,
+      "flagged": 39,
+      "share": 0.047,
+      "pairs": 39,
+      "pairs_shared_with_rules": 35
+    }
+  },
+  "paired_differences": [
+    {
+      "reference": "hand",
+      "fields": [
+        "principal_diagnosis",
+        "secondary_diagnoses"
+      ],
+      "a": "ctagent-extractor_zero",
+      "b": "qwen3-14b_zero",
+      "difference": 0.247,
+      "ci95": [
+        0.145,
+        0.362
+      ]
+    },
+    {
+      "reference": "hand",
+      "fields": [
+        "principal_diagnosis",
+        "secondary_diagnoses"
+      ],
+      "a": "ctagent-extractor-c1250_zero",
+      "b": "qwen3-8b_few",
+      "difference": 0.095,
+      "ci95": [
+        0.022,
+        0.172
+      ]
+    },
+    {
+      "reference": "model-made",
+      "fields": [
+        "principal_diagnosis",
+        "secondary_diagnoses",
+        "medication_changes",
+        "follow_up",
+        "pending_tests",
+        "red_flags"
+      ],
+      "a": "qwen3-14b_zero",
+      "b": "ctagent-extractor_zero",
+      "difference": 0.14,
+      "ci95": [
+        0.108,
+        0.173
+      ]
+    },
+    {
+      "reference": "model-made",
+      "fields": [
+        "principal_diagnosis",
+        "secondary_diagnoses",
+        "medication_changes",
+        "follow_up",
+        "pending_tests",
+        "red_flags"
+      ],
+      "a": "qwen3-14b_zero",
+      "b": "ctagent-extractor-c2500_zero",
+      "difference": 0.135,
+      "ci95": [
+        0.102,
+        0.165
+      ]
+    }
+  ],
+  "support": {
+    "hand": {
+      "principal_diagnosis": 51,
+      "secondary_diagnoses": 106
+    },
+    "model-made": {
+      "principal_diagnosis": 200,
+      "secondary_diagnoses": 414,
+      "medication_changes": 2352,
+      "follow_up": 328,
+      "pending_tests": 44,
+      "red_flags": 483
+    }
+  },
+  "rules": {
+    "hand": {
+      "relaxed_f1": {
+        "principal_diagnosis": 0.931,
+        "secondary_diagnoses": 0.933,
+        "micro": 0.933
+      },
+      "micro_ci95": [
+        0.889,
+        0.97
+      ]
+    },
+    "model-made": {
+      "relaxed_f1": {
+        "principal_diagnosis": 0.838,
+        "secondary_diagnoses": 0.833,
+        "medication_changes": 0.64,
+        "follow_up": 0.0,
+        "pending_tests": 0.083,
+        "red_flags": 0.056,
+        "micro": 0.584
+      },
+      "micro_ci95": [
+        0.548,
+        0.621
+      ],
+      "med_change_type_accuracy": 0.74
+    }
+  },
+  "macro_f1_model_made": {
+    "rules": 0.408,
+    "ctagent-extractor_zero": 0.427,
+    "ctagent-extractor-s2500_zero": 0.452,
+    "ctagent-extractor-c1250_zero": 0.545,
+    "ctagent-extractor-c2500_zero": 0.524,
+    "qwen3-8b-local_zero": 0.62,
+    "qwen3-8b_zero": 0.609,
+    "qwen3-8b_few": 0.553,
+    "qwen3-14b_zero": 0.622,
+    "qwen3-14b_few": 0.579
+  },
+  "bootstrap": {
+    "resamples": 2000,
+    "seed": 17,
+    "unit": "patient"
+  }
+}

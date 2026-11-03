@@ -145,6 +145,8 @@ def test_claude_labels_stay_out_of_the_hand_pass(tmp_path: Path) -> None:
     assert agree["n"] == 2 and agree["fields"] == list(HAND_FIELDS)
     assert "red_flags" not in agree["exact"]  # not hand-labeled, so not scored
     assert agree["exact"]["principal_diagnosis"]["precision"] < 1.0
+    rules = out["silver_vs_claude"]  # the rules against the model-made reference, every field
+    assert rules["n"] == 3 and "red_flags" in rules["exact"]
 
 
 def test_broken_saved_file_reopens_from_prefill(tmp_path: Path) -> None:

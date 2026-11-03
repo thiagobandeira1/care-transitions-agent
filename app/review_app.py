@@ -89,8 +89,12 @@ def review_tab(graph: CompiledStateGraph[Any], tracker: Tracker, reviewer: str) 
     st.write(payload["explanation"])
     st.markdown(
         f"TCM contact by **{plan['contact_by']}** · visit by **{plan['visit_by']}** · "
-        f"{plan['tcm_code']} face-to-face by **{plan['tcm_visit_by']}** · check-ins: "
-        f"{', '.join(map(str, plan['check_ins'])) or 'none'}"
+        f"face-to-face window if billed as {plan['tcm_code']}: **{plan['tcm_visit_by']}** · "
+        f"check-ins: {', '.join(map(str, plan['check_ins'])) or 'none'}"
+    )
+    st.caption(
+        f"{plan['tcm_code']} is a candidate only: the code billed depends on the provider's "
+        "documented medical decision making and the other TCM requirements."
     )
     for f in payload["flags"]:
         st.warning(f"Check: {f}")

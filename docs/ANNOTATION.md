@@ -8,7 +8,7 @@ extension may read the note or fill in the form.
 ## Reference sets
 | File | Notes | How it was made | Use |
 |---|---|---|---|
-| `gold.json` | the 50 overlap notes (plus 1), done 2026-11-02 | by hand in the screen | the gold standard for principal and secondary diagnoses |
+| `gold.json` | the first 51 sampled notes (the 50 overlap notes plus 1), done 2026-11-02 | by hand in the screen, correcting the silver pre-fill | the author-corrected reference for principal and secondary diagnoses (silver-initialized, so not independent of the rules) |
 | `claude.json` | all 200 | filled in with Claude's browser extension on 2026-11-01 (2 hours, median 0.5 min per note) | a second, model-made reference (`--ref claude`); never reported as hand annotation |
 | `gold_b.json` | the 50 overlap notes | by hand, 14 days later (optional) | intra-annotator agreement |
 
