@@ -679,8 +679,8 @@ annotations cannot be regenerated. Fine-tuned weights are not shared, because th
 manuscript.
 
 **Competing interests.** The author is General Manager and Head of AI at Mendez Medical Center, where the follow-up
-board described in Section 4.5 runs. The author founded TH Intelligence, which builds AI and automation tools for
-healthcare organizations. The software is open source. The author declares no other competing interests.
+board described in Section 4.5 runs. The author founded TH Intelligence, which publishes open-source health AI tools.
+The software is open source. The author declares no other competing interests.
 
 **Funding.** This work received no specific funding.
 
