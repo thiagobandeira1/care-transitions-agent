@@ -1,17 +1,18 @@
 # From discharge alerts to follow-up work: design and retrospective evaluation of a local, human-in-the-loop AI agent for primary care
 
-**Thiago Batista Nunes Bandeira**
+**Thiago Batista Nunes Bandeira**, ORCID https://orcid.org/0009-0006-0204-5298
 
-Mendez Medical Center, Lauderhill, Florida, USA. Correspondence: thiagobandeira.ai@gmail.com
+Mendez Medical Center, 5950 W. Oakland Park Blvd, 3rd Floor, Lauderhill, FL 33313, USA
+(https://mendezmedicalcenter.com). Correspondence: thiagobandeira.ai@gmail.com
 
 ---
 
 ## Abstract
 
 **Objective.** Primary care practices learn about their patients' hospital discharges from payer alerts, but
-turning each alert into timely follow-up is manual work, and the hospital's discharge summary rarely reaches the
-practice. We designed an AI agent that runs on a practice's own hardware and evaluated its components
-retrospectively on public hospital data.
+turning each alert into timely follow-up is manual work, and the hospital's discharge summary often does not reach
+the practice. We designed an AI agent that runs on a practice's own hardware and evaluated its components
+retrospectively on de-identified hospital data.
 
 **Materials and Methods.** For each discharge, deterministic code scores readmission risk (LACE) and sets the
 follow-up dates. A local language model extracts structured facts from the discharge summary, when one exists,
@@ -22,8 +23,8 @@ models with QLoRA fine-tunes trained on rule-generated or teacher labels; and dr
 automated checks. Both extraction references started from the rule-generated labels: an author-corrected diagnosis
 reference (51 notes) and a language-model-corrected reference for all fields (200 notes).
 
-**Results.** High-risk discharges were readmitted about twice as often as the rest (28.3% against 14.3%; LACE
-AUROC 0.638). Against the diagnosis reference, the fine-tuned models scored highest (micro F1 0.93-0.94, against
+**Results.** High-risk discharges were readmitted about twice as often as the rest (28.3% against 14.3%; area
+under the receiver operating characteristic curve [AUROC] for LACE, 0.638). Against the diagnosis reference, the fine-tuned models scored highest (micro F1 0.93-0.94, against
 0.69-0.72 for prompted models zero-shot). Against the all-field reference, prompted models zero-shot scored
 0.70-0.72 and the fine-tunes 0.58-0.60, similar to the rule-generated labels themselves (0.58), and the fine-tunes
 matched 243-299 of the rules' 301 potentially false "started" medications (by note and drug-name key), against
@@ -37,7 +38,8 @@ same labels concealed it.
 **Conclusion.** A local, human-in-the-loop follow-up agent is computationally feasible on commodity hardware. On
 these benchmarks a prompted base model was the better default extractor; fine-tuning should be limited to fields
 whose labels have been checked against a reference other than the training labels. Human review, the clinical
-accuracy of the drafts and operational benefit remain to be evaluated.
+accuracy of the drafts and operational benefit remain to be evaluated, and the agent has not been used in patient
+care.
 
 ---
 
@@ -48,7 +50,7 @@ medications, schedules a visit, follows up on results still pending, and watches
 information often reaches primary care late or incomplete,¹ and adverse events after discharge are common, many
 of them related to medications.² In the United States, transitional care management (TCM) adds requirements: an
 interactive contact within two business days of discharge, medication reconciliation by the face-to-face visit,
-and that visit within 7 days with high-complexity medical decision making (CPT 99496) or within 14 days with at
+and that visit within 7 days with high-complexity medical decision making (Current Procedural Terminology [CPT] code 99496) or within 14 days with at
 least moderate complexity (99495).³
 
 Many practices learn about discharges from payer encounter notifications, daily alerts that list which of their
@@ -66,7 +68,7 @@ We designed a care-transitions agent around these constraints: a fixed workflow,
 rule-based decision, small local models only for reading and writing text, and a required human approval step.
 The work aims to help primary care practices adopt such tools on hardware they already own, so the code, the
 synthetic benchmark and every aggregate result are open. This paper describes the agent and evaluates its
-components retrospectively on public hospital data: the risk tiers, extraction and drafting. It also examines a
+components retrospectively on de-identified hospital data: the risk tiers, extraction and drafting. It also examines a
 question that arose while building it: what a small local model learns when it is fine-tuned on cheap,
 rule-generated labels, compared with prompting the same model. Human review and use were not evaluated.
 
@@ -88,13 +90,12 @@ new run for each patient with a check-in due, so no run stays open for the 30 da
 
 The workflow has eight steps. **Ingest** normalizes the day's payer discharge file to one event per stay, with
 dates, age, disposition, acuity and prior use. **EHR context** retrieves active problems and medications from the
-practice's record. **Score** computes the LACE index⁵ (length of stay, acuity of admission, Charlson comorbidity,
+practice's electronic health record (EHR). **Score** computes the LACE index⁵ (length of stay, acuity of admission, Charlson comorbidity,
 and emergency visits in the prior six months). It also flags Medicare coverage at an age under 65, a group that
 includes people entitled through disability or end-stage renal disease. High risk means LACE ≥ 10, or LACE ≥ 7
-with Medicare coverage under 65. The lower threshold is a provisional policy rule, informed by the author's
-earlier operational work on payer notifications, which is unpublished and outside this study; both thresholds are
-to be calibrated on each practice's outcomes. We chose a published score over a trained model because, in that
-earlier work, machine-learning models did not outperform LACE. **Extract**, when a discharge summary is
+with Medicare coverage under 65. The lower threshold is a provisional policy rule from the author's operational
+experience, not a validated cutoff; both thresholds are to be calibrated on each practice's outcomes. LACE is a
+published, transparent score that needs no local training data. **Extract**, when a discharge summary is
 available, has a local model turn it into structured JSON: principal and secondary diagnoses, medication changes,
 follow-up appointments, pending tests and red-flag symptoms. **Plan** applies the rules in Table 1 and has the
 model write a two-to-three-sentence explanation for the coordinator. The risk tier sets the practice's scheduling
@@ -129,7 +130,7 @@ draft was edited and whether flags were real problems; these measures were not u
 
 ### 2.2 Data
 
-**MIMIC.** We used the discharge summaries of MIMIC-IV-Note v2.2⁶,⁷ (331,793 notes from 145,914 patients, 2008-2019) and the
+**MIMIC.** We used the Medical Information Mart for Intensive Care (MIMIC): the discharge summaries of MIMIC-IV-Note v2.2⁶,⁷ (331,793 notes from 145,914 patients, 2008-2019) and the
 hospital module of MIMIC-IV v3.1⁶,⁸ (patients admitted 2008-2022), both from the Beth Israel Deaconess Medical Center in
 Boston, on PhysioNet.⁹ Notes were split by patient into training, validation and test
 sets (70/10/20, seed 13), so no patient appears in two splits. The 200 evaluation notes were a random sample of
@@ -149,8 +150,8 @@ public with the code.
 
 This part evaluates a published score inside the agent's workflow; it does not develop a new prediction model.
 
-**Cohort.** Every admission with a discharge summary in the test split, excluding deaths in hospital and
-discharges to hospice, for which the agent plans no follow-up.
+**Cohort.** The cohort was every admission with a discharge summary in the test split, excluding deaths in hospital
+and discharges to hospice, for which the agent plans no follow-up.
 
 **Outcome.** The primary outcome is an admission-type proxy for unplanned readmission: any later admission of the
 same patient anywhere in MIMIC-IV's hospital module (not only the note-linked cohort) that started after the
@@ -160,27 +161,24 @@ nor blocks a later unplanned one; the outcome is binary. Follow-up is not censor
 record, and MIMIC records only its own hospital, so some readmissions are missed. The secondary outcome is death
 (from the date of death in the patients table) or readmission within 30 days, LACE's original outcome.
 
-**Score.** LACE as the agent computes it at discharge:
-- **L:** calendar days from admission to discharge, scored 0 for less than one day, 1-3 for 1-3 days, 4 for 4-6,
-  5 for 7-13 and 7 for 14 or more.
-- **A:** 3 points for an emergency, urgent or emergency-observation admission type, or registration in the
-  emergency department.
-- **C:** the Charlson score from the admission's billing diagnoses, using Quan's enhanced ICD-9-CM and ICD-10
-  coding algorithms¹¹ matched by code prefix (ICD-10-CM codes are matched with the ICD-10 prefixes), with severe
-  liver disease, complicated diabetes and metastatic cancer superseding their milder forms; scored as is up to 3,
-  and 5 for 4 or more.
-- **E:** one point per distinct ED registration day 2-182 days before admission (about six months, excluding the
-  index visit), up to 4. MIMIC's hospital module has no ED-only visits, so these are ED-registered admissions and
-  undercount ED use.
+**Score.** LACE as the agent computes it at discharge has four parts. Length of stay (L) counts calendar days from
+admission to discharge, scored 0 for less than one day, 1-3 for 1-3 days, 4 for 4-6, 5 for 7-13 and 7 for 14 or more.
+Acuity (A) gives 3 points for an emergency, urgent or emergency-observation admission type, or registration in the
+emergency department (ED). Comorbidity (C) is the Charlson score from the admission's billing diagnoses, using Quan's
+enhanced ICD-9-CM and ICD-10 coding algorithms¹¹ matched by code prefix (ICD-10-CM codes are matched with the ICD-10
+prefixes), with severe liver disease, complicated diabetes and metastatic cancer superseding their milder forms; it
+is scored as is up to 3, and 5 for 4 or more. Emergency use (E) gives one point per distinct ED registration day
+2-182 days before admission (about six months, excluding the index visit), up to 4. MIMIC's hospital module has no
+ED-only visits, so these are ED-registered admissions and undercount ED use.
 
 Missing diagnoses or visits score 0. Because billing diagnoses are coded after discharge and ED-only visits are
 absent, this is an operationalization of LACE on hospital data, not the score a practice would compute from its
 own record at discharge. The Medicare flag came from the admission's insurance.
 
-**Measures.** The AUROC of the score; the share of stays in the high tier, the readmission rate in each tier, and
-the share of readmissions in the high tier (sensitivity); and the same measures for LACE ≥ 10 alone. 95%
-confidence intervals come from 1,000 bootstrap resamples of patients, each resampled patient contributing all of
-their stays.
+**Measures.** The measures were the area under the receiver operating characteristic curve (AUROC) of the score; the
+share of stays in the high tier, the readmission rate in each tier, and the share of readmissions in the high tier
+(sensitivity); and the same measures for LACE ≥ 10 alone. Confidence intervals (95%) come from 1,000 bootstrap
+resamples of patients, each resampled patient contributing all of their stays.
 
 ### 2.4 Evaluating extraction
 
@@ -202,7 +200,7 @@ pending tests in 19% and red flags in 74%.
 
 **Models.** We prompted Qwen3-8B and Qwen3-14B¹² zero-shot and with three fixed training examples, served by
 Ollama in 4-bit (Q4_K_M) with greedy decoding, a 16,384-token context and a 3,000-token answer cap. We fine-tuned
-Qwen3-8B with QLoRA:¹³,¹⁴ a 4-bit NF4 base, LoRA rank 16 (alpha 32) on all linear layers, one epoch at learning
+Qwen3-8B with quantized low-rank adaptation (QLoRA)¹³,¹⁴: a 4-bit NF4 base, LoRA rank 16 (alpha 32) on all linear layers, one epoch at learning
 rate 2e-4 with cosine decay, an effective batch of 8, and loss on the answer only, using the zero-shot prompt.
 Examples longer than 3,072 tokens were dropped rather than truncated, keeping about 89% of notes. We trained four
 models (Table 2). Each adapter was merged, converted to GGUF with llama.cpp, quantized to Q4_K_M (5.0 GB) and
@@ -225,22 +223,23 @@ imitation. We built two references on the 200 test notes in a local annotation t
 the silver labels as editable tables and saves only answers that pass the schema. Both references were therefore
 initialized from the silver labels: they are distinct from the training labels, but not independent of the rules
 that produced them.
-- **Author-corrected diagnosis reference.** The author, whose training is in data science and AI and who has five
-  years of experience supervising clinical and operational work in primary care, corrected 51 notes (median 0.3
-  minutes per note) following a written guideline published with the code. Under it, the
-  principal diagnosis is the main reason for the hospitalization as written under Discharge Diagnosis (the first
-  or "primary" one), and secondary diagnoses are the other diagnoses listed there; past history not listed at
-  discharge, and diagnoses mentioned only elsewhere in the note, are out of scope. This reference covers the two diagnosis fields only. Follow-up, pending tests and red flags were left out
-  before labeling, as too ambiguous for a quick single pass. Medication changes were labeled, then excluded after a
-  check found a systematic error in them (Section 3.2); this decision was made after the hand pass and before any
-  model was scored against the hand labels.
-- **Language-model-corrected reference.** Claude Opus 5.5 (Anthropic), a cloud service, filled in all six fields on
-  all 200 notes on 1 November 2026, by operating the same tool through its browser extension under the author's
-  account, whose model-training setting ("Help improve Claude") was turned off at the time (median 0.5 minutes per
-  note). PhysioNet's guidance on online services lists Anthropic Claude among the services it suggests for
-  credentialed data.¹⁵ This was the only step in which note text left the local machine; every evaluated model,
-  and every other step, ran locally. We treat these labels as model-made, not as hand
-  annotation.
+
+**Author-corrected diagnosis reference.** The author, whose training is in data science and AI and who has five
+years of experience supervising clinical and operational work in primary care, corrected 51 notes (median 0.3
+minutes per note) following a written guideline published with the code. Under it, the principal diagnosis is the
+main reason for the hospitalization as written under Discharge Diagnosis (the first or "primary" one), and secondary
+diagnoses are the other diagnoses listed there; past history not listed at discharge, and diagnoses mentioned only
+elsewhere in the note, are out of scope. This reference covers the two diagnosis fields only. Follow-up, pending
+tests and red flags were left out before labeling, as too ambiguous for a quick single pass. Medication changes were
+labeled, then excluded after a check found a systematic error in them (Section 3.2); this decision was made after
+the hand pass and before any model was scored against the hand labels.
+
+**Language-model-corrected reference.** Claude Opus 5.5 (Anthropic), a cloud service, filled in all six fields on
+all 200 notes on 1 November 2026, by operating the same tool through its browser extension under the author's
+account, whose model-training setting ("Help improve Claude") was turned off at the time (median 0.5 minutes per
+note). PhysioNet's guidance on online services lists Anthropic Claude among the services it suggests for credentialed
+data.¹⁵ This was the only step in which note text left the local machine; every evaluated model, and every other
+step, ran locally. We treat these labels as model-made, not as hand annotation.
 
 **Metrics.** List fields are scored as sets, with greedy pairing. A match is exact (normalized equality) or
 relaxed (token Jaccard overlap of at least 0.5); relaxed is the primary metric. A medication change matches only
@@ -297,13 +296,14 @@ NumPy 2.5.4, and the figure matplotlib 3.11.2.
 
 ### 2.7 Ethics
 
-MIMIC-IV and MIMIC-IV-Note are de-identified. Their collection was reviewed by the Institutional Review Board at
-the Beth Israel Deaconess Medical Center, which granted a waiver of informed consent and approved the data
-sharing, and we used them under the PhysioNet credentialed data use agreement. No separate ethics review was
-sought for this secondary analysis of de-identified data and synthetic records; the study involved no new human
-participants. Section 4.5 describes Mendez Medical Center's follow-up system, with the practice's written
-approval; no data from the practice were used. No MIMIC data, labels, predictions or drafts are in the public
-repository, which holds only code, the synthetic benchmark and aggregate metrics.
+The Institutional Review Board at the Beth Israel Deaconess Medical Center reviewed the collection of patient
+information and the creation of the MIMIC-IV and MIMIC-IV-Note research resources, granted a waiver of informed
+consent and approved the data sharing initiative.⁶,⁷,⁸ The data are de-identified, and the author accessed them on
+PhysioNet as a credentialed user, which requires human-subjects research training and a signed data use agreement.
+This study is a secondary analysis of these data and of synthetic records. It recruited no participants and used
+no other patient data, including any from the author's practice. No institutional review was obtained beyond the
+oversight described above. The agent has not been used in patient care. No MIMIC data, labels, predictions or
+drafts are in the public repository, which holds only code, the synthetic benchmark and aggregate metrics.
 
 ### 2.8 Reporting
 
@@ -315,14 +315,14 @@ extraction, fine-tuning and drafting). The study had no registered protocol.
 ### 3.1 Risk tiers
 
 The cohort held 64,036 stays from 28,220 patients, after excluding 1,692 deaths in hospital and 671 hospice
-discharges. 12,601 stays (19.7%) were followed by an unplanned readmission within 30 days, and 1,332 stays by
-death within 30 days. 71.1% of stays had at least one Charlson condition, 29.2% a prior ED-registered admission and
-80.9% an acute admission; the median LACE was 8 (interquartile range 6-11).
+discharges. Within 30 days, an unplanned readmission followed 12,601 stays (19.7%) and death followed 1,332.
+At least one Charlson condition was present in 71.1% of stays, a prior ED-registered admission in 29.2% and an acute
+admission in 80.9%; the median LACE was 8 (interquartile range 6-11).
 
 LACE discriminated modestly, with an AUROC of 0.638 for readmission and 0.654 for death or readmission (Table 3).
 The agent's high tier flagged 38.2% of stays; their readmission rate was 28.3%, about twice the standard tier's
 14.3%, and the tier contained 55.1% of all readmissions. LACE ≥ 10 alone flagged 34.9% at a similar rate (28.9%)
-and contained 51.3%, so the under-65 Medicare rule added 3.3 points of stays and 3.8 points of sensitivity.
+and contained 51.3%, so the under-65 Medicare rule added 3.3 percentage points of stays and 3.8 of sensitivity.
 
 **Table 3.** The agent's risk tiers on MIMIC-IV, 64,036 stays from 28,220 patients, against 30-day unplanned readmission (admission-type proxy); 95% CIs from a patient bootstrap.
 
@@ -423,8 +423,8 @@ items (18) or was absent (4), so the rule saw no admission drugs. We screened ev
 first word of four or more letters in its name appears in the note's admission section, a heuristic screen rather
 than proof that the drug was taken before admission (Table 7). To compare sources case by case, each flagged row was
 keyed by its note and that word; the key can merge different medications that share a first word (two sodium salts,
-for example), so a match means agreement under this rule, not verified identity. 304 of the rules' 1,211 `started`
-rows (25.1%) were flagged, giving 301 keys. Each fine-tune flagged a similar share (25.3-27.3%) and matched most of
+for example), so a match means agreement under this rule, not verified identity. Of the rules' 1,211 `started`
+rows, 304 (25.1%) were flagged, giving 301 keys. Each fine-tune flagged a similar share (25.3-27.3%) and matched most of
 the same keys: Silver-8851 matched 299 of the 301, and the other fine-tunes 243-272. The prompted models flagged
 3.3-8.7% of their `started` rows and matched 22-46 of the keys, and the language-model-corrected reference flagged
 2.6% (18 of 688 rows). The author-corrected labels
@@ -489,7 +489,7 @@ scored, 67 of the 195 discharges (34%) were high risk.
 
 The first run, before the two prompt changes, listed 12.2 conditions per brief and had 16 of 2,371 flagged, 4
 provider briefs that failed validation, and 18.2 s per discharge, with medication and red-flag completeness within
-1.2 points of the final run. Whether the shorter condition lists dropped clinically important conditions was not
+1.2 percentage points of the final run. Whether the shorter condition lists dropped clinically important conditions was not
 measured. The MIMIC runs had no practice name to give, and despite the instruction every call script still
 contained a practice-name placeholder; with the name in the prompt, in the 30 further synthetic discharges, none
 did.
@@ -517,7 +517,7 @@ they exclude review and coordinator time.
 
 ### 4.1 Principal findings
 
-This retrospective evaluation tested three components of the agent on public hospital data, and each behaved
+This retrospective evaluation tested three components of the agent on de-identified hospital data, and each behaved
 differently. The rule-based risk tier discriminated modestly (AUROC 0.64): the high tier's readmission rate was
 about twice the standard tier's, which supports using the tier to order a coordinator's list, not as a prediction
 to act on alone; whether it improves decisions or workload was not tested. Extraction was the hardest component:
@@ -553,10 +553,10 @@ in MIMIC, the silver fine-tunes produced none.
 
 The matched control isolates the label source: on the same notes, with the same training budget, changing only
 the labels moved follow-up from 0.19 to 0.80 on the synthetic notes. Rule-generated labels are a form of weak
-supervision,¹⁸ and labels from a larger model a form of distillation;¹⁹ both are cheap, and both strongly shape what
+supervision,¹⁸ and labels from a larger model a form of distillation¹⁹; both are cheap, and both strongly shape what
 the student learns. They are not a hard ceiling: on the synthetic notes the silver fine-tunes kept part of the
 base model's skill on red flags (0.679, against 0.037 for the rules). But on MIMIC, where the labels were likely wrong
-or empty, the fine-tunes followed the labels rather than the base model's behaviour, and the teacher-label models,
+or empty, the fine-tunes followed the labels rather than the base model's behavior, and the teacher-label models,
 whose medication labels were still silver, matched the same potential medication errors. Scoring against the training
 labels hid this: against silver, the silver fine-tune looked far better than the prompted models (0.959 against
 0.57-0.64), but against references other than its training labels it was no better than the rules. Projects that
@@ -585,65 +585,52 @@ person approves, makes every rule-based decision reproducible and auditable. Som
 flags: validation failures, runaway lists, and medication or condition names absent from the record. Errors these
 checks cannot detect, such as a wrong dose or a misleading sentence, are left to the reviewer.
 
-### 4.5 In one practice, the discharge summary was the missing input
+### 4.5 The discharge summary is the missing input
 
-Mendez Medical Center, a multi-specialty primary care practice in Lauderhill, Florida, already runs the agent's
-deterministic steps in production, on a hospital follow-up board the author built in the practice's own
-dashboard. No data from the practice were used in this study; this section describes the system, not its patients.
-The payer's admission alert opens a card while the patient is still in the hospital, so follow-up is ready before
-discharge. Cards move through columns for new discharges, call again, visit scheduled and unreachable, and a daily
-overview counts open cards, contacts due or overdue, visits past the 14-day deadline and high-risk patients on the
-readmission protocol. Each card shows the LACE score stated as a frequency ("about N in 100 similar past stays were
-readmitted within 30 days", from the practice's own payer history), the high-risk rule with a coordinator
-override, the follow-up steps, and the call results; an appointment check looks for a booked visit in the
-practice's schedule.
-
-The board has no language model, because the practice receives the payer's alert but not the hospital's discharge
-summary. This matches the long-standing gap in discharge communication to primary care,¹ and in this practice it
-decides where the agent can help. The rule-based half works with the alert alone, which is why the practice could
-deploy it. The language-model half needs the summary: without it, there is nothing to extract, and the call script
-and the brief lose the medication review and the hospital's warning signs. The agent runs either way, skipping
-extraction when no summary exists. The Synthea drafting runs used this mode, but measured only speed, validation
-and grounding, so what is lost without a summary was not evaluated, and the agent's full value depends on getting
-the summary to the practice, for example through a health information exchange or the
-hospital's patient portal. The board also suggests a change to the agent that remains untested: stating risk as a
-frequency from each practice's own history, which may be easier for a coordinator to use than a score.
+The agent's two halves need different inputs. The rule-based half works with a payer's alert alone. The
+language-model half needs the hospital's discharge summary, and discharge communication to primary care has long
+had gaps.¹ Without a summary there is nothing to extract, and the call script and the brief lose the medication
+review and the hospital's warning signs. The agent runs either way, skipping extraction when no summary exists. The
+Synthea drafting runs used this mode, but measured only speed, validation and grounding, so what is lost without a
+summary was not evaluated. The agent's full value depends on getting the summary to the practice, for example
+through a health information exchange or the hospital's patient portal.
 
 ### 4.6 Limitations
 
-- **References.** The diagnosis reference is small and narrow: 51 notes and two fields, corrected quickly by one
-  annotator from a pre-filled form, with no second annotator or agreement measure. Medication changes and the
-  prose fields rest on a language-model-corrected reference that also started from the pre-filled form; its
-  accuracy is unmeasured, and the low scores of every model on pending tests may partly reflect it.
-- **Development on the evaluation cases.** The extractor and the drafting prompt were chosen on the same notes they
-  are evaluated on, and the extraction prompt on the synthetic notes, so the results are optimistic for a fixed,
-  prospectively specified pipeline.
-- **Data.** MIMIC comes from one academic center and redacts its follow-up section. Whether the Qwen3 models saw
-  similar text in pre-training is unknown. The synthetic benchmark was written by Qwen3-14B, which may favor that
-  model, and its notes were kept only if they contained every reference fact, which makes them easier than real
-  notes.
-- **Variability and subgroups.** Each fine-tune was trained once with one seed, and each model was run once, so
-  training and generation variability are unmeasured. No subgroup, fairness or language analyses were done,
-  including for the under-65 Medicare rule.
-- **Matching.** Relaxed matching treats brand and generic names as different and needs only token overlap. The
-  draft checks are lexical: grounding catches invented names, not every wrong statement; completeness is measured
-  against the extraction rather than the note; and condition grounding needs only one shared word.
-- **Risk score.** On MIMIC, the alert and record were stand-ins built from hospital tables, prior emergency visits
-  were undercounted, readmissions to other hospitals were missed, follow-up was not censored at the end of the
-  record, and billing diagnoses, coded after discharge, stood in for the problem list a practice would have at
-  discharge. The thresholds are provisional and not calibrated on any practice's outcomes.
-- **Human review and use.** No user evaluation was done. Human review is a design safeguard whose effectiveness is
-  untested; reviewers may accept plausible errors (automation bias²¹). Latency measures computation only, not
-  coordinator time. The no-summary mode was run only on synthetic records, with automated checks.
+This study has several limitations. The diagnosis reference is small and narrow: 51 notes and two fields, corrected
+quickly by one annotator from a pre-filled form, with no second annotator or agreement measure. Medication changes
+and the prose fields rest on a language-model-corrected reference that also started from the pre-filled form; its
+accuracy is unmeasured, and the low scores of every model on pending tests may partly reflect it. The extractor and
+the drafting prompt were chosen on the same notes they are evaluated on, and the extraction prompt on the synthetic
+notes, so the results are optimistic for a fixed, prospectively specified pipeline. Each fine-tune was trained once
+with one seed, and each model was run once, so training and generation variability are unmeasured.
+
+The data limit how far the results generalize. MIMIC comes from one academic center and redacts its follow-up
+section, and whether the Qwen3 models saw similar text in pre-training is unknown. The synthetic benchmark was
+written by Qwen3-14B, which may favor that model, and its notes were kept only if they contained every reference
+fact, which makes them easier than real notes. No subgroup, fairness or language analyses were done, including for
+the under-65 Medicare rule.
+
+The measures are also limited. Relaxed matching treats brand and generic names as different and needs only token
+overlap. The draft checks are lexical: grounding catches invented names, not every wrong statement; completeness is
+measured against the extraction rather than the note; and condition grounding needs only one shared word. For the
+risk score, the alert and record on MIMIC were stand-ins built from hospital tables, prior emergency visits were
+undercounted, readmissions to other hospitals were missed, follow-up was not censored at the end of the record, and
+billing diagnoses, coded after discharge, stood in for the problem list a practice would have at discharge. The
+thresholds are provisional and not calibrated on any practice's outcomes.
+
+Finally, no user evaluation was done. Human review is a design safeguard whose effectiveness is untested, and
+reviewers may accept plausible errors (automation bias²¹). Latency measures computation only, not coordinator time.
+The no-summary mode was run only on synthetic records, with automated checks.
 
 ### 4.7 Next steps
 
 The next evaluation is of use. The review screen already records decisions, edits, review time and the reviewer's
 verdict on flags, and a protocol is in the repository in which a practice's follow-up coordinator reviews 30
-synthetic discharges and completes a short questionnaire; aggregate counts from the practice's live board would add
-how the rule-based steps are used day to day. Beyond that, the agent needs a clinician-read evaluation of drafts,
-an evaluation of the no-summary mode, a frequency statement of risk calibrated on each practice's history, and
-above all a route for the discharge summary to reach the practice.
+synthetic discharges and completes a short questionnaire. Beyond that, the agent needs a clinician-read evaluation
+of drafts, an evaluation of the no-summary mode, a frequency statement of risk calibrated on each practice's
+history, and above all a route for the discharge summary to reach the practice. Any evaluation with staff or
+patients would need independent ethical review first.
 
 ## 5. Conclusion
 
@@ -653,9 +640,9 @@ drafts that stayed consistent with their input under automated checks. Extractio
 fine-tuning a small model on rule-generated labels reproduced the rules' patterns, including their gaps and
 potential errors; on these benchmarks a
 prompted base model was the better default, and fine-tuning should be limited to fields whose labels have been
-checked against a reference other than the training labels. In the one practice described, the scarce input was
-the discharge summary, not the model. Human review, the clinical accuracy of the drafts and operational benefit
-remain to be evaluated.
+checked against a reference other than the training labels. The language-model half of the workflow still depends
+on the discharge summary reaching the practice. Human review, the clinical accuracy of the drafts and operational
+benefit remain to be evaluated, and the agent has not been used in patient care.
 
 ---
 
@@ -665,7 +652,7 @@ remain to be evaluated.
 
 **Data availability.** The code, the synthetic benchmark, the annotation guideline and tools, the review tool, the
 script for Figure 1 and every aggregate metric reported here are public at
-https://github.com/thiagobandeira1/care-transitions-agent (release v1-preprint). MIMIC-IV and MIMIC-IV-Note are
+https://github.com/thiagobandeira1/care-transitions-agent (tag v1.1-preprint). MIMIC-IV and MIMIC-IV-Note are
 available to credentialed users from PhysioNet. No MIMIC-derived data, labels, predictions, drafts or model weights
 are distributed, as the data use agreement requires. No data from Mendez Medical Center were used for training or
 evaluation.
@@ -678,66 +665,67 @@ annotations cannot be regenerated. Fine-tuned weights are not shared, because th
 **Author contributions.** T.B.N.B. conceived the study, built the software, ran the analyses and wrote the
 manuscript.
 
-**Competing interests.** The author is General Manager and Head of AI at Mendez Medical Center, where the follow-up
-board described in Section 4.5 runs. The author founded TH Intelligence, which publishes open-source health AI tools.
+**Competing interests.** The author is General Manager and Head of AI at Mendez Medical Center, which uses a hospital
+follow-up tool the author built, with similar scheduling rules; that tool and the practice's data are not part of
+this study. The author founded TH Intelligence, which publishes open-source health AI tools.
 The software is open source. The author declares no other competing interests.
 
 **Funding.** This work received no specific funding.
 
-**Use of generative AI.** Claude Opus 5.5 (Anthropic) produced the language-model-corrected reference labels
-(Section 2.4). Claude Code (Anthropic) assisted with software development, analysis scripts and the drafting and
-revision of this manuscript; it ran on the author's computer, where the analysis scripts printed aggregate results
-only, and it did not read note text, labels or drafts. The author reviewed all code, analyses and text and takes
-responsibility for them.
-
-**Acknowledgments.** The author thanks Oscar Mendez, MD, and Mendez Medical Center for supporting this work and for
-testing the prototype of the hospital follow-up board described in Section 4.5 in the practice's daily work; that
-experience informed the design and is not an evaluation reported here.
+**Acknowledgments.** The author thanks Oscar Mendez, MD, and Mendez Medical Center for supporting this work. Claude
+Code (Anthropic) assisted with the software and with drafting and revising the manuscript, and did not read note
+text, labels or drafts; the author reviewed all of it and takes responsibility for it.
 
 ## References
 
 1. Kripalani S, LeFevre F, Phillips CO, Williams MV, Basaviah P, Baker DW. Deficits in communication and
    information transfer between hospital-based and primary care physicians: implications for patient safety and
-   continuity of care. *JAMA*. 2007;297(8):831-841.
+   continuity of care. *JAMA*. 2007;297(8):831-841. doi:10.1001/jama.297.8.831
 2. Forster AJ, Murff HJ, Peterson JF, Gandhi TK, Bates DW. The incidence and severity of adverse events affecting
    patients after discharge from the hospital. *Ann Intern Med*. 2003;138(3):161-167.
+   doi:10.7326/0003-4819-138-3-200302040-00007
 3. Centers for Medicare & Medicaid Services. Transitional care management services. MLN Booklet MLN908628.
-   Baltimore, MD: CMS; August 2025.
+   Baltimore, MD: CMS; August 2025. Accessed November 4, 2026.
+   https://www.cms.gov/files/document/mln908628-transitional-care-management-services.pdf
 4. Agrawal M, Hegselmann S, Lang H, Kim Y, Sontag D. Large language models are few-shot clinical information
    extractors. In: *Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing*. Abu
    Dhabi: Association for Computational Linguistics; 2022:1998-2022. doi:10.18653/v1/2022.emnlp-main.130
 5. van Walraven C, Dhalla IA, Bell C, et al. Derivation and validation of an index to predict early death or
    unplanned readmission after discharge from hospital to the community. *CMAJ*. 2010;182(6):551-557.
+   doi:10.1503/cmaj.091117
 6. Johnson AEW, Bulgarelli L, Shen L, et al. MIMIC-IV, a freely accessible electronic health record dataset.
    *Sci Data*. 2023;10:1. doi:10.1038/s41597-022-01899-x
 7. Johnson A, Pollard T, Horng S, Celi LA, Mark R. MIMIC-IV-Note: deidentified free-text clinical notes (version
    2.2). PhysioNet. 2023. doi:10.13026/1n74-ne17
 8. Johnson A, Bulgarelli L, Pollard T, Gow B, Moody B, Horng S, Celi LA, Mark R. MIMIC-IV (version 3.1).
    PhysioNet. 2024. doi:10.13026/kpb9-mt58
-9. Pollard T, Moody BE, et al. PhysioNet as a global platform for biomedical research. *Nature Health*. 2026.
-   doi:10.1038/s44360-026-00096-z
+9. Pollard T, Moody BE, Lehman LWH, et al. PhysioNet as a global platform for biomedical research. *Nature Health*.
+   2026;1:792-795. doi:10.1038/s44360-026-00096-z
 10. Walonoski J, Kramer M, Nichols J, et al. Synthea: an approach, method, and software mechanism for generating
     synthetic patients and the synthetic electronic health care record. *J Am Med Inform Assoc*.
-    2018;25(3):230-238.
+    2018;25(3):230-238. doi:10.1093/jamia/ocx079
 11. Quan H, Sundararajan V, Halfon P, et al. Coding algorithms for defining comorbidities in ICD-9-CM and ICD-10
-    administrative data. *Med Care*. 2005;43(11):1130-1139.
-12. Yang A, et al. Qwen3 technical report. arXiv:2505.09388. 2025.
-13. Hu EJ, Shen Y, Wallis P, et al. LoRA: low-rank adaptation of large language models. In: *ICLR*. 2022.
+    administrative data. *Med Care*. 2005;43(11):1130-1139. doi:10.1097/01.mlr.0000182534.19832.83
+12. Yang A, Li A, Yang B, et al. Qwen3 technical report. arXiv:2505.09388. 2025.
+13. Hu EJ, Shen Y, Wallis P, et al. LoRA: low-rank adaptation of large language models. In: *ICLR*. 2022. arXiv:2106.09685
 14. Dettmers T, Pagnoni A, Holtzman A, Zettlemoyer L. QLoRA: efficient finetuning of quantized LLMs. In:
-    *Advances in Neural Information Processing Systems 36 (NeurIPS 2023)*. 2023.
-15. PhysioNet. Responsible use of MIMIC data with online services like GPT. April 18, 2023.
-    https://physionet.org/news/post/gpt-responsible-use
+    *Advances in Neural Information Processing Systems 36 (NeurIPS 2023)*. 2023:10088-10115.
+    doi:10.52202/075280-0441
+15. PhysioNet. Responsible use of MIMIC data with online services like GPT. Published April 18, 2023. Accessed
+    November 3, 2026. https://physionet.org/news/post/gpt-responsible-use
 16. Collins GS, Moons KGM, Dhiman P, et al. TRIPOD+AI statement: updated guidance for reporting clinical
     prediction models that use regression or machine learning methods. *BMJ*. 2024;385:e078378.
+    doi:10.1136/bmj-2023-078378
 17. Gallifant J, Afshar M, Ameen S, et al. The TRIPOD-LLM reporting guideline for studies using large language
-    models. *Nat Med*. 2025;31(1):60-69.
+    models. *Nat Med*. 2025;31(1):60-69. doi:10.1038/s41591-024-03425-5
 18. Ratner A, Bach SH, Ehrenberg H, Fries J, Wu S, Ré C. Snorkel: rapid training data creation with weak
-    supervision. *Proc VLDB Endowment*. 2017;11(3):269-282.
+    supervision. *Proc VLDB Endowment*. 2017;11(3):269-282. doi:10.14778/3157794.3157797
 19. Hinton G, Vinyals O, Dean J. Distilling the knowledge in a neural network. arXiv:1503.02531. 2015.
 20. Fort K, Sagot B. Influence of pre-annotation on POS-tagged corpus development. In: *Proceedings of the Fourth
     Linguistic Annotation Workshop*. Uppsala: Association for Computational Linguistics; 2010:56-63.
+    https://aclanthology.org/W10-1807/
 21. Goddard K, Roudsari A, Wyatt JC. Automation bias: a systematic review of frequency, effect mediators, and
-    mitigators. *J Am Med Inform Assoc*. 2012;19(1):121-127.
+    mitigators. *J Am Med Inform Assoc*. 2012;19(1):121-127. doi:10.1136/amiajnl-2011-000089
 
 ---
 
@@ -786,9 +774,9 @@ fact.
 **A7. Reproduction.** The README and PROGRESS.md list the commands. Rescoring the saved predictions against the
 saved reference labels reproduces every reported metric exactly, but those files stay on the author's computer:
 MIMIC-derived predictions and labels cannot be distributed, and the synthetic predictions are not in the repository.
-The public release holds the code, the synthetic benchmark and the aggregate results files. Re-running the models
+The public repository holds the code, the synthetic benchmark and the aggregate results files. Re-running the models
 may give slightly different outputs, and the author-corrected and language-model-corrected annotations cannot be
-regenerated. Prompts and instructions in the release: extraction, `src/ctagent/extractor.py`, with the schema and
+regenerated. Prompts and instructions in the repository: extraction, `src/ctagent/extractor.py`, with the schema and
 field definitions in `src/ctagent/extraction.py`; teacher labeling, `src/ctagent/teacher.py`; the plan
 explanation, drafting and the retry, `src/ctagent/graph.py`, `src/ctagent/drafts.py` and `src/ctagent/llm.py`;
 synthetic notes, `src/ctagent/notegen.py`; annotation guideline, `docs/ANNOTATION.md`.
@@ -823,7 +811,7 @@ fine-tuning and drafting. The table lists where each reporting area is addressed
 | Performance measures and uncertainty | 2.4, 3, A5 | Reported; intervals conditional on models and references |
 | Development and evaluation data | 2.2, 2.5, 4.6 | Training and test splits are patient-disjoint; the evaluation cases were reused to select the extractor and revise the drafting prompt (disclosed) |
 | Subgroups and fairness | 4.6 | Not performed |
-| Human oversight and deployment | 2.1, 4.6 | Designed; not evaluated |
+| Human oversight and deployment | 2.1, 2.7, 4.6 | Designed; not evaluated; not used in patient care |
 | Protocol and registration | 2.8, 4.7 | None for this study; a simulated-use protocol is in the repository |
 | Data and code availability | Declarations, B | Reported |
 | Ethics | 2.7 | Reported |

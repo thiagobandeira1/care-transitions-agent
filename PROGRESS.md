@@ -681,6 +681,15 @@ name>"`. M10 was rerun with these changes.
        bootstrap differences, reference support, macro F1, and the rules' rows in Tables 5-6.
      - The synthetic benchmark's CIs now resample patients (`extract-bench --rescore`). The point estimates are
        unchanged, and the intervals moved by at most 0.003.
+   - **Version 1.1** (2026-11-05, tagged `v1.1-preprint`):
+     - Copy-edits and references: limitations in prose, abbreviations spelled out at first use, DOIs or links
+       added, and Table 6's intervals kept on one line.
+     - The ethics section is rewritten around the oversight of the data, and "public data" became "de-identified
+       data", since MIMIC is controlled-access.
+     - The description of the practice's board and the unpublished earlier result are out of the text. The board
+       is one line under Competing interests, and the paper states that the agent has not been used in patient
+       care.
+     - No result changed.
 2. **Gold set** (paper 2's reference): done for this round (Finding 3).
    - `gold.json`: 51 notes hand-labeled on the diagnoses (2026-11-02). Medication changes were dropped from
      the hand reference (see `docs/ANNOTATION.md`).
