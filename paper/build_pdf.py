@@ -3,6 +3,7 @@
 uv run --with markdown python paper/build_pdf.py
 """
 
+import re
 import subprocess
 import tempfile
 import time
@@ -32,6 +33,7 @@ th, td { border-top: 0.5pt solid #bbb; border-bottom: 0.5pt solid #bbb; padding:
 th { background: #f1f1f1; }
 img { width: 100%; margin: 4pt 0 2pt; }
 code { font-family: Consolas, monospace; font-size: 9.5pt; }
+th code, td code { font-size: 8pt; }
 /* captions stay whole and with their tables and figures */
 p:has(+ table), p:has(> img) + p { break-inside: avoid; }
 p:has(+ table), p:has(+ p > img), p:has(> img) { break-after: avoid; }
@@ -41,6 +43,8 @@ p:has(+ table), p:has(+ p > img), p:has(> img) { break-after: avoid; }
 def main() -> None:
     md = (HERE / "manuscript.md").read_text(encoding="utf-8")
     body = markdown.markdown(md, extensions=["tables", "sane_lists"])
+    # a confidence interval stays on one line in its table cell
+    body = re.sub(r"<td>(\S+ \([\d.]+-[\d.]+\))", r'<td style="white-space: nowrap">\1', body)
     title = md.splitlines()[0].lstrip("# ").strip()
     html = (
         f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>{title}</title>'
