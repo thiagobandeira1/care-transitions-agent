@@ -5,6 +5,8 @@
 Mendez Medical Center, 5950 W. Oakland Park Blvd, 3rd Floor, Lauderhill, FL 33313, USA
 (https://mendezmedicalcenter.com). Correspondence: thiagobandeira.ai@gmail.com
 
+Preprint, version 1.2 (9 November 2026). DOI: https://doi.org/10.5281/zenodo.24090450
+
 ---
 
 ## Abstract
