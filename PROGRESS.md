@@ -701,6 +701,10 @@ name>"`. M10 was rerun with these changes.
      - Competing interests no longer name TH Intelligence: no products are planned on this agent.
      - ADR 0001 records the one labeling exception.
      - No result changed.
+     - Posted on Zenodo as 10.5281/zenodo.24090450. The DOI 10.5281/zenodo.24090449 always resolves to the
+       latest version.
+   - **Version 1.3** (2026-11-09, tagged `v1.3-preprint`): the title page no longer carries a preprint line, and
+     Data availability names this tag. No other change.
 2. **Gold set** (paper 2's reference): done for this round (Finding 3).
    - `gold.json`: 51 notes hand-labeled on the diagnoses (2026-11-02). Medication changes were dropped from
      the hand reference (see `docs/ANNOTATION.md`).

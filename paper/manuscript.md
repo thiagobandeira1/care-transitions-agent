@@ -5,8 +5,6 @@
 Mendez Medical Center, 5950 W. Oakland Park Blvd, 3rd Floor, Lauderhill, FL 33313, USA
 (https://mendezmedicalcenter.com). Correspondence: thiagobandeira.ai@gmail.com
 
-Preprint, version 1.2 (9 November 2026). DOI: https://doi.org/10.5281/zenodo.24090450
-
 ---
 
 ## Abstract
@@ -666,7 +664,7 @@ benefit remain to be evaluated, and the agent has not been used in patient care.
 
 **Data availability.** The code, the synthetic benchmark, the annotation guideline and tools, the review tool, the
 script for Figure 1 and every aggregate metric reported here are public at
-https://github.com/thiagobandeira1/care-transitions-agent (tag v1.2-preprint). MIMIC-IV and MIMIC-IV-Note are
+https://github.com/thiagobandeira1/care-transitions-agent (tag v1.3-preprint). MIMIC-IV and MIMIC-IV-Note are
 available to credentialed users from PhysioNet. No MIMIC-derived data, labels, predictions, drafts or model weights
 are distributed, as the data use agreement requires. No data from Mendez Medical Center were used for training or
 evaluation.
