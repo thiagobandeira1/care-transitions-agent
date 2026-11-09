@@ -28,8 +28,8 @@ under the receiver operating characteristic curve [AUROC] for LACE, 0.638). Agai
 0.69-0.72 for prompted models zero-shot). Against the all-field reference, prompted models zero-shot scored
 0.70-0.72 and the fine-tunes 0.58-0.60, similar to the rule-generated labels themselves (0.58), and the fine-tunes
 matched 243-299 of the rules' 301 potentially false "started" medications (by note and drug-name key), against
-22-46 for prompted models. Drafting took 16.8 s per discharge on one consumer GPU, and the automated check found no
-medication names unmatched to the record.
+22-46 for prompted models. Drafting took 16.8 s per discharge on one consumer GPU; every medication name in the drafts
+matched a record stand-in that included the model's own extraction, and 98.4% also appeared in the note text.
 
 **Discussion.** Deterministic rules can carry the time-critical scheduling while small local models handle text.
 Fine-tuning on rule-generated labels reproduced the labels' gaps and potential errors, and evaluation against those
@@ -55,11 +55,11 @@ least moderate complexity (99495).³
 
 Many practices learn about discharges from payer encounter notifications, daily alerts that list which of their
 patients were admitted or discharged. An alert is not follow-up work. Someone still has to decide who is at high
-risk, what is due by when, what the hospital changed, and what to say on the phone. In a small practice that is
-usually one coordinator working through the list by hand.
+risk, what is due by when, what the hospital changed, and what to say on the phone. In a small practice, this work
+often falls to one coordinator working through the list by hand.
 
 Large language models (LLMs) can extract clinical information and draft text,⁴ and agent systems chain such steps
-together. Three obstacles keep them out of small practices. Sending patient notes to a cloud service raises
+together. Three constraints matter in small practices. Sending patient notes to a cloud service raises
 privacy and contractual questions. Open-weight models small enough to run on a single consumer GPU are weaker
 than the largest cloud models. And autonomous agents that choose their own actions are hard to make safe and
 auditable in clinical work.
@@ -93,17 +93,20 @@ dates, age, disposition, acuity and prior use. **EHR context** retrieves active 
 practice's electronic health record (EHR). **Score** computes the LACE index⁵ (length of stay, acuity of admission, Charlson comorbidity,
 and emergency visits in the prior six months). It also flags Medicare coverage at an age under 65, a group that
 includes people entitled through disability or end-stage renal disease. High risk means LACE ≥ 10, or LACE ≥ 7
-with Medicare coverage under 65. The lower threshold is a provisional policy rule from the author's operational
-experience, not a validated cutoff; both thresholds are to be calibrated on each practice's outcomes. LACE is a
+with Medicare coverage under 65. The lower threshold is a provisional policy rule informed by the author's earlier,
+unpublished analysis of payer notifications at the author's practice, which is outside this study; it is not a
+validated cutoff, and both thresholds are to be calibrated on each practice's outcomes. LACE is a
 published, transparent score that needs no local training data. **Extract**, when a discharge summary is
 available, has a local model turn it into structured JSON: principal and secondary diagnoses, medication changes,
 follow-up appointments, pending tests and red-flag symptoms. **Plan** applies the rules in Table 1 and has the
 model write a two-to-three-sentence explanation for the coordinator. The risk tier sets the practice's scheduling
-targets; it does not determine the TCM code. The plan stores a candidate code with its window (99496 and 7 days
-for high risk, 99495 and 14 days otherwise), which the review screen labels as a candidate and the drafting
-prompt receives as context. Planning high-risk patients toward the shorter window is a conservative scheduling
-default. The agent assigns and submits no billing codes: the code billed depends on the provider's documented
-medical decision making, which the agent does not assess. **Draft** has the model write a coordinator call script
+targets, including which TCM face-to-face window the plan tracks: the 7-day window that applies if the visit is
+billed as 99496 for high-risk patients, and the 14-day window that applies if it is billed as 99495 for the others.
+Tracking the shorter window for high-risk patients is a conservative scheduling default. The plan stores the code
+that goes with the tracked window; the review screen labels it a candidate only, and the drafting prompt receives
+it as context. A LACE tier is not a measure of medical decision making: the code billed depends on the provider's
+documented medical decision making, which the agent does not assess, and the agent assigns and submits no billing
+codes. **Draft** has the model write a coordinator call script
 (opening, questions, medication review, warning signs, scheduling) and a one-page provider brief (reason for
 admission, key conditions, medication changes, what to watch for, risk summary). A deterministic check then flags
 any medication or condition a draft names that is not in the patient's record. **Human review** pauses the run,
@@ -205,7 +208,7 @@ rate 2e-4 with cosine decay, an effective batch of 8, and loss on the answer onl
 Examples longer than 3,072 tokens were dropped rather than truncated, keeping about 89% of notes. We trained four
 models (Table 2). Each adapter was merged, converted to GGUF with llama.cpp, quantized to Q4_K_M (5.0 GB) and
 served like the base models. The untouched base model went through the same conversion as a quantization control
-(Base-8B-local); its micro F1 was within 0.001 of the library model's on the synthetic notes and the 200-note
+(Base-8B-local); its micro F1 was within 0.001 of the Ollama library build's (qwen3:8b) on the synthetic notes and the 200-note
 reference, and 0.022 higher on the 51-note reference. Appendix A gives the remaining
 settings: seeds, sampling, model identifiers, decoding and training details.
 
@@ -238,7 +241,8 @@ the hand pass and before any model was scored against the hand labels.
 all 200 notes on 1 November 2026, by operating the same tool through its browser extension under the author's
 account, whose model-training setting ("Help improve Claude") was turned off at the time (median 0.5 minutes per
 note). PhysioNet's guidance on online services lists Anthropic Claude among the services it suggests for credentialed
-data.¹⁵ This was the only step in which note text left the local machine; every evaluated model, and every other
+data, noting that Claude does not train on prompts or responses by default and does not routinely have humans
+review data.¹⁵ This was the only step in which note text left the local machine; every evaluated model, and every other
 step, ran locally. We treat these labels as model-made, not as hand annotation.
 
 **Metrics.** List fields are scored as sets, with greedy pairing. A match is exact (normalized equality) or
@@ -275,7 +279,8 @@ The extraction prompt and its field guidance were developed on the synthetic not
 from training splits. A further 30 synthetic discharges, sampled separately (one overlaps the 30 above), were
 drafted with the practice's name in the prompt to check placeholders.
 
-We measured by automated counts only; no draft was read. Record grounding is the agent's own check against the
+We measured by automated counts only, and no MIMIC draft was read; in the synthetic runs, the one flagged item
+was inspected. Record grounding is the agent's own check against the
 record, which includes the model's extraction, so a draft can repeat an extraction error and still pass it. Note
 grounding counts the medication names in the drafts that appear in the note text (the whole name, or every word of
 four or more letters in it), and the conditions in the brief that share at least one content word with the note,
@@ -296,14 +301,17 @@ NumPy 2.5.4, and the figure matplotlib 3.11.2.
 
 ### 2.7 Ethics
 
-The Institutional Review Board at the Beth Israel Deaconess Medical Center reviewed the collection of patient
-information and the creation of the MIMIC-IV and MIMIC-IV-Note research resources, granted a waiver of informed
-consent and approved the data sharing initiative.⁶,⁷,⁸ The data are de-identified, and the author accessed them on
-PhysioNet as a credentialed user, which requires human-subjects research training and a signed data use agreement.
-This study is a secondary analysis of these data and of synthetic records. It recruited no participants and used
-no other patient data, including any from the author's practice. No institutional review was obtained beyond the
-oversight described above. The agent has not been used in patient care. No MIMIC data, labels, predictions or
-drafts are in the public repository, which holds only code, the synthetic benchmark and aggregate metrics.
+The Institutional Review Board at the Beth Israel Deaconess Medical Center (Boston, Massachusetts, USA) reviewed
+the collection of patient information and the creation of the MIMIC-IV and MIMIC-IV-Note research resources,
+granted a waiver of informed consent and approved the data sharing initiative.⁶,⁷,⁸ PhysioNet's pages for these
+resources give no approval number for that review. Under the waiver, no written patient consent was obtained. The
+data are de-identified, and the author accessed them on PhysioNet as a credentialed user, which requires
+human-subjects research training and a signed data use agreement. Note text left the local machine only for the
+language-model-corrected reference, which a cloud service produced (Section 2.4). This study is a secondary analysis
+of these existing data and of synthetic records. It recruited no participants and analyzed no other patient data,
+including any from the author's practice. No institutional review was obtained beyond the oversight described above. The agent
+has not been used in patient care. No MIMIC data, labels, predictions or drafts are in the public repository, which
+holds only code, the synthetic benchmark and aggregate metrics.
 
 ### 2.8 Reporting
 
@@ -370,8 +378,10 @@ that choice. The principal diagnosis was easy for every model (0.91-0.98); the g
 secondary diagnoses. The prompted models found most of them (recall 0.80-0.88 zero-shot) but listed many that the
 reference did not (precision 0.48-0.53), while the fine-tunes kept to the Discharge Diagnosis list (precision
 0.87-0.91, recall 0.95-0.99). Under a broader definition, some of the prompted models' extra diagnoses could be
-legitimate. The rules agreed with this reference at 0.933 and the language-model-corrected reference at 0.845, and
-the latter ranked the models the same way.
+legitimate. On these 51 notes, the rules agreed with this reference at 0.933 micro F1, and the language-model-corrected
+labels agreed with it at 0.845. On all 200 notes, the language-model-corrected reference also placed the fine-tunes
+above the prompted models zero-shot on secondary diagnoses (0.83-0.84 against 0.70-0.75), but Qwen3-8B few-shot
+scored highest there (0.873).
 
 **Table 5.** MIMIC-IV-Note, 51 notes from 51 patients, author-corrected diagnosis reference, relaxed F1 (95% CI for micro F1). The last row counts the reference items.
 
@@ -484,8 +494,8 @@ medication names in the drafts appeared in the note text, and the other 34 came 
 appearing verbatim. Briefs listed 5.9 conditions on average; the record check flagged 3 of 1,144 (0.3%), in 2
 discharges, and 65.2% shared a content word with the note, most of the rest coming from the admission's billing
 diagnoses. The provider brief named 93.6% of the extraction's changed medications (92.7% with the same change
-type), the call script 86.5%, and the call script covered 86.9% of the extraction's red flags. With comorbidity
-scored, 67 of the 195 discharges (34%) were high risk.
+type), the call script 86.5%, and the call script covered 86.9% of the extraction's red flags. With the Charlson
+component scored from the admission's billing diagnoses, 67 of the 195 discharges (34%) were high risk.
 
 The first run, before the two prompt changes, listed 12.2 conditions per brief and had 16 of 2,371 flagged, 4
 provider briefs that failed validation, and 18.2 s per discharge, with medication and red-flag completeness within
@@ -536,9 +546,11 @@ practice's details.
 
 ### 4.2 Fine-tuning reproduced the rules' patterns
 
-The evidence is consistent across both benchmarks and both references (Table 10). Where the rule-generated labels
-agreed with the reference convention, as for secondary diagnoses listed under Discharge Diagnosis, fine-tuning gave
-a clear gain over prompted models, which listed more diagnoses. Where the labels were likely wrong, as for
+Table 10 summarizes what the fine-tunes did with the rule-generated labels. Where those labels agreed with the
+reference convention, as for secondary diagnoses listed under Discharge Diagnosis, fine-tuning gave a clear gain
+against the author-corrected reference over prompted models, which listed more diagnoses; against the
+language-model-corrected reference the fine-tunes still scored above the prompted models zero-shot, but not above
+Qwen3-8B few-shot. Where the labels were likely wrong, as for
 `started` medications when the admission list was not numbered, the fine-tunes matched most of the same flagged
 cases note by note under a heuristic drug-name key (Table 7) and fell below the prompted models. Where the labels were empty, as for follow-up redacted
 in MIMIC, the silver fine-tunes produced none.
@@ -547,7 +559,7 @@ in MIMIC, the silver fine-tunes produced none.
 
 | The rule-generated labels | Example | What the fine-tunes did |
 |---|---|---|
-| agreed with the reference convention | secondary diagnoses under Discharge Diagnosis | agreed best with the reference |
+| agreed with the reference convention | secondary diagnoses under Discharge Diagnosis | agreed best with the author-corrected reference |
 | were likely wrong | `started` medications with unnumbered admission lists | matched most of the same flagged cases (potential errors) |
 | were empty | follow-up, redacted in MIMIC | silver-label fine-tunes produced none; teacher-label fine-tunes recovered some |
 
@@ -625,11 +637,11 @@ The no-summary mode was run only on synthetic records, with automated checks.
 
 ### 4.7 Next steps
 
-The next evaluation is of use. The review screen already records decisions, edits, review time and the reviewer's
+The next planned evaluation is of the agent in use. The review screen already records decisions, edits, review time and the reviewer's
 verdict on flags, and a protocol is in the repository in which a practice's follow-up coordinator reviews 30
 synthetic discharges and completes a short questionnaire. Beyond that, the agent needs a clinician-read evaluation
-of drafts, an evaluation of the no-summary mode, a frequency statement of risk calibrated on each practice's
-history, and above all a route for the discharge summary to reach the practice. Any evaluation with staff or
+of drafts, an evaluation of the no-summary mode, risk stated as a frequency and calibrated to each
+practice's own outcomes, and above all a route for the discharge summary to reach the practice. Any evaluation with staff or
 patients would need independent ethical review first.
 
 ## 5. Conclusion
@@ -652,7 +664,7 @@ benefit remain to be evaluated, and the agent has not been used in patient care.
 
 **Data availability.** The code, the synthetic benchmark, the annotation guideline and tools, the review tool, the
 script for Figure 1 and every aggregate metric reported here are public at
-https://github.com/thiagobandeira1/care-transitions-agent (tag v1.1-preprint). MIMIC-IV and MIMIC-IV-Note are
+https://github.com/thiagobandeira1/care-transitions-agent (tag v1.2-preprint). MIMIC-IV and MIMIC-IV-Note are
 available to credentialed users from PhysioNet. No MIMIC-derived data, labels, predictions, drafts or model weights
 are distributed, as the data use agreement requires. No data from Mendez Medical Center were used for training or
 evaluation.
@@ -660,21 +672,30 @@ evaluation.
 **Code availability.** The author owns the code and releases it as open source. The repository's commands
 recompute every reported metric from the saved outputs (Appendix B maps each table to its results file) and
 rebuild this paper. Re-running the models may give slightly different outputs, and the hand and language-model
-annotations cannot be regenerated. Fine-tuned weights are not shared, because they were trained on MIMIC.
+annotations cannot be regenerated. Fine-tuned weights are not shared, because they were trained on MIMIC. The software is research code: it has not
+been validated for clinical use and should not be used in patient care without local validation, human review of
+every output and the practice's own approvals.
 
 **Author contributions.** T.B.N.B. conceived the study, built the software, ran the analyses and wrote the
-manuscript.
+manuscript, with the AI assistance described under Declaration of generative AI use.
 
-**Competing interests.** The author is General Manager and Head of AI at Mendez Medical Center, which uses a hospital
-follow-up tool the author built, with similar scheduling rules; that tool and the practice's data are not part of
-this study. The author founded TH Intelligence, which publishes open-source health AI tools.
-The software is open source. The author declares no other competing interests.
+**Competing interests.** The author is General Manager and Head of AI at Mendez Medical Center, which uses a rule-based
+hospital follow-up tool the author built, with similar scheduling rules and no language model; that tool and the practice's data are not part of
+this study. The software is open source. The author declares no other competing interests.
 
 **Funding.** This work received no specific funding.
 
-**Acknowledgments.** The author thanks Oscar Mendez, MD, and Mendez Medical Center for supporting this work. Claude
-Code (Anthropic) assisted with the software and with drafting and revising the manuscript, and did not read note
-text, labels or drafts; the author reviewed all of it and takes responsibility for it.
+**Trial registration.** Not applicable; this study is not a clinical trial.
+
+**Declaration of generative AI use.** Claude Code (Anthropic) wrote the study software and analysis code under the
+author's direction, and drafted and revised this manuscript from the author's instructions, decisions and results;
+it never read MIMIC note text, labels, predictions or drafts, only aggregate results. The author reviewed its
+output. Claude Opus 5.5 (Anthropic), used as a cloud service through Anthropic's Claude browser extension, read the
+200 MIMIC-IV-Note evaluation notes in the local annotation tool and corrected their pre-filled labels, producing the
+language-model-corrected reference (Section 2.4); these labels are treated as model-made, and their accuracy was
+not measured (Section 4.6). The author takes full responsibility for the content of this article.
+
+**Acknowledgments.** The author thanks Oscar Mendez, MD, and Mendez Medical Center for supporting this work.
 
 ## References
 
@@ -807,7 +828,7 @@ fine-tuning and drafting. The table lists where each reporting area is addressed
 | Score inputs and missing data | 2.3 | LACE mapping reported; missing inputs score 0 |
 | Sample size | 2.2-2.4 | Partial: the risk cohort is every eligible test-split stay; the 200-note sample was sized for feasible annotation, and the author corrected its first 51 notes; no sample-size calculation |
 | Models, versions, settings and prompts | 2.4, A2-A4 | Reported; prompts in the repository |
-| Reference construction | 2.4, 4.3 | Silver-initialized; one annotator; no agreement measure |
+| Reference construction | 2.4, 4.3 | Silver-initialized; diagnoses corrected by the author (one annotator, 51 notes) and all fields by Claude Opus 5.5 (200 notes, model-made); no second human annotator |
 | Performance measures and uncertainty | 2.4, 3, A5 | Reported; intervals conditional on models and references |
 | Development and evaluation data | 2.2, 2.5, 4.6 | Training and test splits are patient-disjoint; the evaluation cases were reused to select the extractor and revise the drafting prompt (disclosed) |
 | Subgroups and fairness | 4.6 | Not performed |

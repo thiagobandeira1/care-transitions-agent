@@ -690,6 +690,17 @@ name>"`. M10 was rerun with these changes.
        is one line under Competing interests, and the paper states that the agent has not been used in patient
        care.
      - No result changed.
+   - **Version 1.2** (2026-11-09, tagged `v1.2-preprint`):
+     - Preprint checklist items: the ethics section names the board, says no approval number is published and no
+       written consent was obtained, and says where note text left the machine. Declarations add a trial
+       registration line, a labeled declaration of generative AI use and a not-for-clinical-use line.
+     - Corrections from a compliance review: Section 3.2 now reads 0.845 as the agreement between the two
+       references, and the ranking claim is limited to zero-shot prompting. Also corrected: the sentence on the TCM
+       window the tier sets, the abstract's medication check, the source of the provisional threshold, and Appendix
+       C's reference row.
+     - Competing interests no longer name TH Intelligence: no products are planned on this agent.
+     - ADR 0001 records the one labeling exception.
+     - No result changed.
 2. **Gold set** (paper 2's reference): done for this round (Finding 3).
    - `gold.json`: 51 notes hand-labeled on the diagnoses (2026-11-02). Medication changes were dropped from
      the hand reference (see `docs/ANNOTATION.md`).
