@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper given under preferred-citation."
+type: software
+title: care-transitions-agent
+authors:
+  - family-names: Bandeira
+    given-names: "Thiago Batista Nunes"
+    orcid: "https://orcid.org/0009-0006-0204-5298"
+repository-code: "https://github.com/thiagobandeira1/care-transitions-agent"
+license: MIT
+version: v1.3-preprint
+date-released: 2026-11-09
+preferred-citation:
+  type: article
+  status: preprint
+  title: "From discharge alerts to follow-up work: design and retrospective evaluation of a local, human-in-the-loop AI agent for primary care"
+  authors:
+    - family-names: Bandeira
+      given-names: "Thiago Batista Nunes"
+      orcid: "https://orcid.org/0009-0006-0204-5298"
+  year: 2026
+  doi: 10.5281/zenodo.24090449
+  publisher:
+    name: Zenodo
+  url: "https://doi.org/10.5281/zenodo.24090449"
+  license: CC-BY-4.0

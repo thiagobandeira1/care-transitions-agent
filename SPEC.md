@@ -1,5 +1,10 @@
 # SPEC: care-transitions-agent
 
+_Status (2026-11-09): this is the original plan (2026-10-25), kept as written apart from the gold-set bullet in
+Part A (updated 2026-11-02). For what was built and measured, see `paper/manuscript.md`, `PROGRESS.md` and
+`docs/adr/`, including ADR 0001's one data-policy exception (2026-11-01, to data rule 1 below). Older text, this
+spec included, calls the published preprint "paper 2"._
+
 A local, privacy-preserving AI system for the 30 days after a hospital discharge, built for primary care practices
 and MSOs. It has 2 parts:
 

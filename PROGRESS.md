@@ -1,10 +1,14 @@
 # Progress: care-transitions-agent (Stage 4)
 
-_Last updated: 2026-11-02, after the gold set was labeled and every model was scored against it (Finding 3).
+_Last updated: 2026-11-09 (paper version 1.3 posted on Zenodo). The gold set was labeled and every model scored
+against it on 2026-11-02 (Finding 3).
 Published on 2026-10-28 at
 https://github.com/thiagobandeira1/care-transitions-agent (code, docs and aggregate metrics only). The M5 to M8 sections report MIMIC aggregates only (counts, rates,
 length quantiles, metrics). Every other number is from synthetic data (Synthea
 and notes generated from it). None of it is MMC data._
+
+_Note (2026-11-09): older entries (Findings 1 and 3, M4) call the published preprint "paper 2"; What needs
+you, items 1b and 6, give the paper's history._
 
 ## Where things stand
 | Milestone | Status |
@@ -619,7 +623,8 @@ The agent now records what the paper's "how it is used" section needs, from the 
 The pilot of the full agent was dropped on 2026-11-02 (the practice's records don't fit it). "How it is used"
 is now the simulated-use study (M13). The practice already runs the rule-based steps live on its own follow-up
 board, without discharge summaries; the paper describes that board anonymously, and any counts from it are
-computed at the practice, aggregates only.
+computed at the practice, aggregates only. _Superseded: version 1 names the practice, and from version 1.1 the
+board is one line under the paper's Competing interests._
 
 ### M12: the risk tiers against real readmissions (MIMIC-IV, 2026-11-02)
 `mimic-risk` (`src/ctagent/mimic_risk.py`) evaluates the agent's score-and-tier step on every test-split
@@ -664,9 +669,11 @@ name>"`. M10 was rerun with these changes.
      - The author is General Manager and Head of AI at Mendez Medical Center, which is named, with the
        practice's written approval. The author owns the code, and no practice data were used.
      - No funding. Claude Opus 5.5 is disclosed for the reference labels. The acknowledgments thank Oscar
-       Mendez, MD, and the practice for testing the prototype.
+       Mendez, MD, and the practice for testing the prototype of the practice's own follow-up board, not this
+       agent (from version 1.1 they thank them only for supporting this work).
      - It covers the public-data work (risk tiers, extraction, drafts) and describes the board in words; the
-       session and the board counts are next steps for version 2.
+       session and the board counts are next steps for version 2. _Superseded in version 1.1: the board is one
+       line under Competing interests and is not part of the study._
    - **PDF:** `uv run --with markdown python paper/build_pdf.py` builds `paper/manuscript.pdf` (22 pages, with
      page numbers). Its tables were checked against `evals/results/`.
    - **Figure 1:** `uv run --with matplotlib python paper/figure1.py`.
@@ -691,8 +698,8 @@ name>"`. M10 was rerun with these changes.
        care.
      - No result changed.
    - **Version 1.2** (2026-11-09, tagged `v1.2-preprint`):
-     - Preprint checklist items: the ethics section names the board, says no approval number is published and no
-       written consent was obtained, and says where note text left the machine. Declarations add a trial
+     - Preprint checklist items: the ethics section names the review board, says no approval number is published
+       and no written consent was obtained, and says where note text left the machine. Declarations add a trial
        registration line, a labeled declaration of generative AI use and a not-for-clinical-use line.
      - Corrections from a compliance review: Section 3.2 now reads 0.845 as the agreement between the two
        references, and the ranking claim is limited to zero-shot prompting. Also corrected: the sentence on the TCM
@@ -705,7 +712,7 @@ name>"`. M10 was rerun with these changes.
        latest version.
    - **Version 1.3** (2026-11-09, tagged `v1.3-preprint`): the title page no longer carries a preprint line, and
      Data availability names this tag. No other change.
-2. **Gold set** (paper 2's reference): done for this round (Finding 3).
+2. **Gold set** (the extraction references): done for this round (Finding 3).
    - `gold.json`: 51 notes hand-labeled on the diagnoses (2026-11-02). Medication changes were dropped from
      the hand reference (see `docs/ANNOTATION.md`).
    - `claude.json`: all 200 notes labeled with Claude's browser extension (2026-11-01), a second,
@@ -722,8 +729,18 @@ name>"`. M10 was rerun with these changes.
 5. **Labels for the next fine-tune:** option C is done (Finding 2). The gold set (item 2) now decides two open
    questions: whether the fine-tune's gains on diagnoses and medications are real, and whether the teacher or
    silver is right on follow-up, pending tests and red flags.
-6. **Next, agreed 2026-10-27:** the two papers. Paper 1 is MMC readmission, in the work session. Paper 2 is this
-   extraction comparison, built on gold.
+   - **Answered by Finding 3 (2026-11-02):** on diagnoses the fine-tunes lead against the hand labels (micro F1
+     0.93-0.94, against 0.69-0.72 for prompted models zero-shot and 0.81-0.85 few-shot); on medication changes
+     they reproduced the rule's potential errors; on follow-up and red flags the teacher-label fine-tunes score
+     above the silver-only ones but below prompted models zero-shot, and pending tests are low for every model.
+     Medications and those fields rest on Claude's labels alone. A prompted base model stays the default
+     extractor (paper Section 4.2).
+6. **Superseded 2026-11-02:** the two-paper plan agreed on 2026-10-27 became one paper on the agent (item 1b).
+   Versions 1.2 and 1.3 are on Zenodo (version 1.3 is 10.5281/zenodo.24090662, CC BY 4.0), and the all-versions
+   DOI 10.5281/zenodo.24090449 always resolves to the latest version.
+7. **Still open (2026-11-09):** the second labeling pass on the 50 overlap notes, which opens 2026-11-16 (item 2),
+   and the simulated-use session (M13), which runs only after independent ethical review
+   (`docs/SIMULATED_USE.md`, step 0).
 
 ## How to run
 ```

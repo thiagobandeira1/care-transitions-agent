@@ -18,6 +18,22 @@ gold/
 *.json.gz
 *.jsonl
 *.jsonl.gz
+*.arrow
+*.xlsx
+*.xls
+*.npy
+*.npz
+*.h5
+*.gz
+*.zip
+*.7z
+*.tar
+
+# ---- Allowed: SYNTHETIC fixtures only (Synthea-derived or generated; never real or MIMIC text) ----
+# Folders only, so a fixture folder may reuse a data folder name above (notes/, gold/, ...). Files there
+# still follow every file rule in this file (.env, weights, data types), as do the folder rules below.
+!synthetic/samples/
+!synthetic/samples/**/
 
 # ---- Model weights, adapters, training artifacts (MIMIC-trained weights are never redistributed) ----
 models/
@@ -31,6 +47,10 @@ gguf/
 *.pt
 *.pth
 *.ckpt
+*.onnx
+*.pkl
+*.pickle
+*.joblib
 unsloth_compiled_cache/
 wandb/
 mlruns/
@@ -62,11 +82,9 @@ build/
 Thumbs.db
 .vscode/
 .idea/
+~$*
 
-# ---- Allowed: SYNTHETIC fixtures only (Synthea-derived or generated; never real or MIMIC text) ----
-!synthetic/samples/
-!synthetic/samples/**
-
-# ---- paper: the build leftover and the local working draft stay out ----
+# ---- paper: the build leftover, the local working draft and Word copies stay out ----
 paper/manuscript.html
 paper/draft.md
+paper/*.docx

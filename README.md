@@ -33,14 +33,20 @@ flowchart LR
 - **Risk tiers on MIMIC-IV** (64,036 stays): the high tier flags 38.2% of stays, whose 30-day readmission rate
   is 28.3%, against 14.3% for the rest. LACE AUROC is 0.638 (0.631-0.646).
 - **Extraction on MIMIC-IV-Note:**
-  - Against hand labels (51 notes, diagnoses), fine-tuned Qwen3-8B scores micro F1 0.93-0.94, against
-    0.69-0.72 for prompted models.
-  - Across all fields (200 notes, a model-made reference), prompted models lead (0.70-0.72), and the fine-tunes
-    perform at the level of their rule-based training labels (0.58-0.60). Fine-tuning transferred the rules,
-    errors and gaps included.
+  - Against hand labels (51 notes, diagnoses), fine-tuned Qwen3-8B scores micro F1 0.93-0.94, about the
+    rules' own 0.93, against 0.69-0.72 for prompted models zero-shot and 0.81-0.85 few-shot.
+  - Across all fields (200 notes, a model-made reference), prompted models lead: 0.70-0.72 zero-shot and
+    0.67-0.68 few-shot. The fine-tunes (0.58-0.60) perform at the level of their rule-based training labels
+    (0.58). Fine-tuning transferred the rules, gaps and potential errors included.
+  - So a prompted base model is the preferred default extractor; fine-tuning is worth it only for fields
+    whose labels were checked against a reference other than the training labels (here, the section-based
+    diagnoses).
 - **Drafts on 195 MIMIC discharges** (qwen3:14b, one RTX 4080):
-  - 16.8 s per discharge, with no validation failures and no medication absent from the record
-  - 93.6% of the extracted medication changes reach the provider brief
+  - 16.8 s per discharge, and no document still failed validation after the retry
+  - every medication name in the drafts matched a record stand-in that included the model's own extraction, and
+    98.4% also appeared in the note text
+  - 93.6% of the extracted changed medications (started, stopped or dose changed) are named in the provider
+    brief
 - **Synthetic benchmark** (107 notes with known answers, micro F1): rules 0.696, qwen3:8b zero-shot 0.947,
   qwen3:14b few-shot 0.979.
 - The MIMIC-trained weights are not distributed ([model card](docs/MODEL_CARD.md)).
@@ -60,10 +66,16 @@ flowchart LR
 - **Public track (this repo):** Synthea synthetic patients only, including the committed benchmark notes and
   draft samples.
 - **Research track (local only):** fine-tuning and evaluation on MIMIC-IV-Note under the PhysioNet credentialed
-  license. No MIMIC data, note text or MIMIC-trained weights are in this repository (ADR 0001). Every model
-  that is trained or evaluated runs locally. One exception: the 200 gold-set notes were labeled with Claude to
-  make a second reference ([docs/ANNOTATION.md](docs/ANNOTATION.md)). CI fails if data files or weights are
-  tracked.
+  license. No MIMIC data, note text or MIMIC-trained weights are in this repository, and every model that is
+  trained or evaluated runs locally. One exception to keeping note text on this machine: on
+  2026-11-01, Claude Opus 5.5 (Anthropic), a cloud service, used through its browser extension with model
+  training turned off, read the 200 evaluation notes in the local annotation tool and corrected their
+  pre-filled labels, making a second, model-made reference. This was the only step in which note text
+  left this machine. PhysioNet's guidance on online services lists Anthropic Claude among the services it
+  suggests for credentialed data. See [ADR 0001](docs/adr/0001-two-track-data-policy.md) and
+  [docs/ANNOTATION.md](docs/ANNOTATION.md).
+- CI fails if a tracked file has a data or weight file type, is a `.env` file at any depth, or matches
+  `.gitignore`.
 
 ## Run it
 ```
@@ -83,3 +95,10 @@ uv run streamlit run app/annotate_app.py -- --gold-dir data/gold-demo   # gold-s
 Results live in `evals/results/` and progress in [PROGRESS.md](PROGRESS.md). Spec: [SPEC.md](SPEC.md).
 
 _Synthea results show that the workflow works. They are not evidence of clinical validity (ADR 0005)._
+
+## License
+The code is under the [MIT License](LICENSE). The paper ([paper/manuscript.md](paper/manuscript.md),
+[paper/manuscript.pdf](paper/manuscript.pdf)) and its figures are under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), as on Zenodo
+([doi:10.5281/zenodo.24090449](https://doi.org/10.5281/zenodo.24090449)). The build scripts in `paper/`
+(`build_pdf.py`, `figure1.py`) are code, under the MIT License.

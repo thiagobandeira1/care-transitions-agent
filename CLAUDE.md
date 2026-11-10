@@ -1,14 +1,16 @@
 # CLAUDE.md: care-transitions-agent
 
-Stage 4 of Thiago's Readmission-Agent roadmap: a local discharge-summary extraction model (paper 2) and a
-LangGraph care-transitions agent demonstrated on Synthea. Read `SPEC.md` first. Keep the work rigorous, honest
-about negative results, and clearly Thiago's own.
+Stage 4 of Thiago's Readmission-Agent roadmap: a local discharge-summary extraction model and a LangGraph
+care-transitions agent demonstrated on Synthea, both evaluated in the paper (`paper/manuscript.md`). Read `SPEC.md`
+first. Keep the work rigorous, honest about negative results, and clearly Thiago's own.
 
 ## Data rules (override everything; if a task seems to need breaking one, stop and ask Thiago)
 1. **MIMIC data never enters git and never reaches a cloud LLM, including you.** Never open, cat, head, print or
    screenshot MIMIC rows or note text, and never paste it into a prompt. You write scripts. Anything that reads note
    text runs locally (Ollama, transformers or Unsloth). Scripts print aggregates only: counts, token-length
    distributions, metrics.
+   - History: the one past exception (a labeling step through Claude's browser extension on 2026-11-01, ADR 0001)
+     is closed and is not a precedent; rule 1 applies without exception.
 2. MIMIC lives outside this repo. The paths come from `.env` (`MIMIC_NOTE_DIR`, `MIMIC_HOSP_DIR`,
    `MIMIC_WORK_DIR`), which is never committed.
 3. Only Synthea-derived or generated synthetic data may be committed, under `synthetic/samples/`. You may read
