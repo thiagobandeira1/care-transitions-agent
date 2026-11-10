@@ -23,7 +23,7 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --locked --group dev
       - name: Lint (ruff)
         run: uv run ruff check .
       - name: Format check (ruff)
@@ -36,8 +36,16 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           set -e
-          if git ls-files | grep -E '\.(csv|tsv|parquet|db|duckdb|sqlite3?|jsonl|gguf|safetensors|bin|pt)(\.gz)?$|^\.env$'; then
-            echo "::error::Data files, weights or .env are committed"; exit 1
+          if git ls-files | grep -iE '\.(csv|tsv|parquet|db|duckdb|sqlite3?|jsonl|gguf|safetensors|bin|pt|pth|ckpt|feather|arrow|xlsx?|npy|npz|h5|onnx|pkl|pickle|joblib|gz|zip|7z|tar)(\.gz)?$'; then
+            echo "::error::Data files, weights or archives are committed"; exit 1
+          fi
+          if git ls-files | grep -iE '(^|/)\.env(\.[^/]*)?$' | grep -viE '(^|/)\.env\.example$'; then
+            echo "::error::A .env file is committed (only .env.example may be)"; exit 1
+          fi
+          ignored=$(git -c core.ignorecase=true ls-files -ci --exclude-standard)
+          if [ -n "$ignored" ]; then
+            printf '%s\n' "$ignored"
+            echo "::error::Tracked files match .gitignore"; exit 1
           fi
           if git grep -niE '\bmimic(-iv|-iii)?\b' -- synthetic tests/fixtures.py; then
             echo "::error::MIMIC references in synthetic fixtures"; exit 1

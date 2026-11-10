@@ -2,9 +2,12 @@
 
 The paper's "how it is used" question, answered without patient data: a person who does hospital follow-up at a
 primary care practice reviews 30 discharges drafted by the agent, exactly as they would at work. The patients
-are synthetic (Synthea), so anyone can take part. No MIMIC access and no practice records are needed.
+are synthetic (Synthea), so no patient data are involved. No MIMIC access and no practice records are needed.
 
 ## Setup (Thiago, once)
+0. Before running the session with practice staff, obtain independent ethical review; an exemption counts
+   only if that independent reviewer grants it in writing. The paper's Section 4.7 says any evaluation with
+   staff or patients needs independent ethical review first. Participation is voluntary.
 1. Build the 30 cases: 30 Synthea discharges, drafted with the practice's name (about 10 minutes on the GPU).
    ```
    uv run python -m ctagent demo --n 30 --seed 31 --workspace data/simulated-use --practice "Your Practice Name"

@@ -1,12 +1,61 @@
 # Model card: ctagent-extractor (fine-tuned discharge-summary extractor)
 
+## Update (2026-11-09)
+These models are the fine-tuned arms of the paper, published as a preprint on Zenodo: *From discharge alerts to
+follow-up work: design and retrospective evaluation of a local, human-in-the-loop AI agent for primary care*,
+doi:[10.5281/zenodo.24090449](https://doi.org/10.5281/zenodo.24090449), which always resolves to the latest
+version (the figures in this update are from version 1.3). Source: [paper/manuscript.md](../paper/manuscript.md).
+The weights are still not distributed.
+
+**Names.** The paper's names for these models:
+
+| In the paper | Earlier names (this card, `PROGRESS.md`) |
+|---|---|
+| Silver-8851 | M7, v0, `ctagent-extractor` |
+| Silver-2500 | s2500, `ctagent-extractor-s2500` |
+| Teacher-1250 | c1250, `ctagent-extractor-c1250` |
+| Teacher-2500 | c2500, `ctagent-extractor-c2500` |
+| Base-8B-local | `qwen3-8b-local`, the untouched base model through the same GGUF conversion (the control) |
+| Qwen3-8B, zero-shot and few-shot | `qwen3:8b`, the Ollama library build |
+
+**Gold-set results**, pending in the snapshot below (paper Section 3.2; micro F1, relaxed matching):
+- **Diagnoses, author-corrected reference** (51 notes, Table 5): the fine-tunes score 0.93-0.94, about the rules'
+  own 0.93, against 0.69-0.72 for the prompted models zero-shot and 0.81-0.85 few-shot. The gap is in secondary
+  diagnoses: the prompted models list many that the reference does not, while the fine-tunes keep to the
+  Discharge Diagnosis list, as their labels do.
+- **All six fields, language-model-corrected reference** (200 notes, Table 6): the prompted models score
+  0.70-0.72 zero-shot and 0.67-0.68 few-shot, and the fine-tunes 0.58-0.60, near the rules (0.58). On medication
+  changes the fine-tunes stay at the rules' level (F1 0.61-0.63, rules 0.64, prompted models 0.73-0.78) and
+  repeat most of the rules' potential false `started` drugs (Table 7). On follow-up the silver fine-tunes list
+  none, and the teacher fine-tunes recover part (0.30, against 0.40-0.49 for the prompted models zero-shot).
+- Teacher-2500 (c2500), the candidate arm in the snapshot, scores 0.935 and 0.588 against these two
+  references.
+- Against silver (the snapshot's MIMIC row), Silver-8851 looked far better than the prompted models (0.959
+  against 0.57-0.64). Against references other than its training labels, it is no better than the rules.
+- Both references started from the silver labels, so neither is independent of the rules. The diagnosis
+  reference is one annotator's quick pass, with no agreement measure yet. The all-field reference is model-made,
+  by Claude Opus 5.5 (a cloud service; the one exception in [ADR 0001](adr/0001-two-track-data-policy.md)), and
+  its accuracy is unmeasured.
+
+Per-model rows are in paper Tables 5 and 6, `PROGRESS.md` (Finding 3) and `evals/results/`.
+
+**Intended use now** (paper Sections 4.2 and 5, and Code availability): research only, not for clinical use.
+A prompted base model is the preferred default extractor for the agent. A fine-tuned model is worth using only
+for fields whose labels were checked against a reference other than the training labels: here, the
+section-based diagnoses, where it is also about twice as fast.
+
+---
+
+_The rest of this card is its 2026-10-28 snapshot, from before the gold-set results. Where it differs from the
+update above, the update applies._
+
 _2026-10-28. The weights are not distributed. They were trained on MIMIC-IV-Note, whose data use agreement
 forbids sharing data or derived models outside credentialed access. They stay on the training machine._
 
 Four variants exist, all Qwen3-8B with the same method. They differ only in the training labels and the number
 of notes:
 
-| Ollama name | Labels | Train notes | Role in paper 2 |
+| Ollama name | Labels | Train notes | Role in the paper |
 |---|---|---|---|
 | `ctagent-extractor` (v0, M7) | silver | 8,851 | silver-only arm |
 | `ctagent-extractor-s2500` | silver | 2,500 | control for c2500 (same notes) |
@@ -65,7 +114,7 @@ the hand-annotated gold set are pending annotation.
   other note styles.
 
 ## Intended use
-Research only: the fine-tuned arms of paper 2's comparison (few-shot vs fine-tuned, evaluated on gold). It is
+Research only: the fine-tuned arms of the paper's comparison (few-shot vs fine-tuned, evaluated on gold). It is
 not for clinical use. In the agent, every extraction is a suggestion that a coordinator or provider reviews
 before it reaches a patient or the EHR. The few-shot extractor remains the default until a fine-tuned model
 beats it on gold.

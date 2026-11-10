@@ -1,9 +1,9 @@
 # Gold-set annotation guideline (MIMIC-IV-Note, local only)
 
-The gold set is the reference for paper 2's main comparison (base model zero-shot and few-shot vs the fine-tuned
+The gold set is the reference for the paper's main comparison (base model zero-shot and few-shot vs the fine-tuned
 model). Annotate **only what the model can see**: the `input.txt` file, which holds the extraction sections of one
-discharge summary. Everything stays on this PC under `MIMIC_WORK_DIR\gold\`. Label by hand: no AI tool or browser
-extension may read the note or fill in the form.
+discharge summary. The files stay on this PC under `MIMIC_WORK_DIR\gold\`. For `gold.json` and any second hand
+pass (`gold_b.json`), label by hand: no AI tool or browser extension may read the note or fill in the form.
 
 ## Reference sets
 | File | Notes | How it was made | Use |
@@ -12,8 +12,15 @@ extension may read the note or fill in the form.
 | `claude.json` | all 200 | filled in with Claude's browser extension on 2026-11-01 (2 hours, median 0.5 min per note) | a second, model-made reference (`--ref claude`); never reported as hand annotation |
 | `gold_b.json` | the 50 overlap notes | by hand, 14 days later (optional) | intra-annotator agreement |
 
-`gold-check` reports how closely Claude's labels agree with the hand labels (`claude_vs_gold`). On those terms
-the 200-note Claude results can back up the 50-note hand results.
+`claude.json` is the one exception ([ADR 0001](adr/0001-two-track-data-policy.md)), and the only time note text
+left this PC: on 1 November 2026, Claude Opus 5.5 (Anthropic), a cloud service, read the 200 notes in the
+annotation screen through its browser extension and corrected the prefill, under the author's account with model
+training turned off. It is treated as a model-made reference, not hand annotation. It is not a precedent: no
+AI tool or browser extension may read the notes again.
+
+`gold-check` reports how closely Claude's labels agree with the hand labels (`claude_vs_gold`). On the
+diagnoses they agree at 0.845 relaxed micro F1 (paper Section 3.2); on the other fields the accuracy of
+Claude's labels is unmeasured.
 
 **Hand labels cover the 2 diagnosis fields** (Thiago's decisions, 2026-11-02). Each `gold.json` lists its
 fields under `fields`, and every score against it (`gold-check`, `mimic-bench --ref gold`) uses only those. All

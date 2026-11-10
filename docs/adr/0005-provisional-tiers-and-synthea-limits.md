@@ -22,3 +22,16 @@ Synthea cohort (743 Medicare index stays, 6.9% readmitted), LACE scores an AUROC
 ## Consequences
 The demo shows realistic mechanics without implying clinical validity. Model claims rest on the MMC payer-feed
 analysis (Stage 1) and, for extraction, on MIMIC-IV-Note.
+
+## Update (2026-11-09)
+- **The tiers were evaluated on MIMIC-IV, not Synthea** ([the paper](../../paper/manuscript.md), Section 3.1
+  and Table 3; preprint doi:10.5281/zenodo.24090449). On 64,036 stays, against 30-day unplanned readmission (an
+  admission-type proxy), LACE scored an AUROC of 0.638, and the high tier flagged 38.2% of stays, readmitted at
+  28.3% against 14.3% for the standard tier.
+- **The pilot of the full agent at MMC was dropped on 2026-11-02**, so the thresholds were not calibrated in a
+  pilot as planned above.
+- **The thresholds stay provisional** and are not calibrated on any practice's outcomes (paper Section 4.6).
+  They are to be calibrated on each practice's own outcomes before use.
+- **Correction to Consequences:** model claims in the paper rest on MIMIC-IV, for the tiers as well as for
+  extraction. The payer-feed analysis informed the provisional lower threshold and is outside the paper
+  (Section 2.1). As in paper Table 1, that threshold is LACE >= 7 with Medicare coverage under 65.

@@ -65,3 +65,34 @@ themselves as a baseline, shows whether it learned more than the rules. That com
 - **Export:** Ollama 0.40 no longer quantizes safetensors to Q4_K_M or loads LoRA adapters. The merged model is
   converted and quantized with llama.cpp, and a control (the base model through the same steps) isolates the
   fine-tune from quantization differences.
+
+## Update (2026-11-09): outcome
+The comparison is reported in the paper ([paper/manuscript.md](../../paper/manuscript.md)), published as a
+preprint on Zenodo: doi:10.5281/zenodo.24090449, which always resolves to the latest version (the figures here
+are from version 1.3). Older entries here call it "paper 2". The references are in its Section 2.4, the results
+in Section 3.2, and what fine-tuning learned in Section 4.2.
+- **The references actually used.** Both were made in the local annotation tool by correcting the silver
+  pre-fill, so they differ from the training labels but are not independent of the rules.
+  - **Author-corrected diagnosis reference:** the first 51 of the 200 test notes, principal and secondary
+    diagnoses only. The weak fields were left out before labeling, and medication changes after a check found a
+    systematic error in them, before any model was scored against the hand labels. There is no second
+    annotator; the same annotator's second pass, for intra-annotator agreement, is pending
+    ([docs/ANNOTATION.md](../ANNOTATION.md)).
+  - **Model-made reference for all six fields:** all 200 notes, corrected by Claude Opus 5.5 (a cloud service)
+    through Anthropic's Claude browser extension. It is the exception in [ADR 0001](0001-two-track-data-policy.md),
+    the only step in which note text left this machine, and it is never reported as hand annotation.
+- **Outcome: a prompted base model is the agent's preferred default extractor.** On the diagnoses, the
+  fine-tunes agreed best with the author-corrected reference (micro F1 0.93-0.94, against 0.69-0.72 for the
+  prompted models zero-shot and 0.81-0.85 few-shot; the rules themselves 0.933). On all fields they scored at the
+  level of their training labels (0.58-0.60, rules 0.584), below the prompted models (0.70-0.72 zero-shot,
+  0.67-0.68 few-shot). The weak fields were scored against the model-made reference only. There the
+  teacher-label fine-tunes beat the silver ones on follow-up (0.30 F1, where the silver ones list none) and red
+  flags, but stayed below the prompted models zero-shot on both (follow-up 0.40-0.49), and pending tests were
+  hard for every model. A fine-tuned model is worth using only for fields whose labels were checked against a
+  reference other than the training labels, here the section-based diagnoses.
+- **Two base-model builds.** `qwen3:8b` is the Ollama library build. Base-8B-local (`qwen3-8b-local`) is the
+  untouched base model through the same GGUF conversion as the fine-tunes: the control under Export above. Their
+  micro F1 was within 0.001 on the synthetic notes and the 200-note reference, and 0.022 higher for
+  Base-8B-local on the 51-note reference. "Base 8b" in older entries can be either: on the synthetic notes, 0.947
+  is `qwen3:8b` and 0.948 is Base-8B-local. [docs/MODEL_CARD.md](../MODEL_CARD.md) maps the fine-tunes' earlier
+  names (M7, s2500, c1250, c2500) to the paper's.
