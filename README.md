@@ -1,7 +1,13 @@
 # care-transitions-agent
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24090449.svg)](https://doi.org/10.5281/zenodo.24090449)
+
 Local, privacy-preserving AI for the 30 days after a hospital discharge, built for primary care practices and MSOs.
 Every output is a suggestion: a coordinator or provider approves it before anything reaches a patient.
+
+**Paper (preprint):** [From discharge alerts to follow-up work: design and retrospective evaluation of a local,
+human-in-the-loop AI agent for primary care](https://doi.org/10.5281/zenodo.24090449). Zenodo, 2026.
+doi:10.5281/zenodo.24090449
 
 - **Care-transitions agent:** a fixed-order LangGraph workflow. It scores readmission risk (LACE + an under-65
   flag), plans follow-up with deterministic rules (risk tier, TCM 99495/99496 clocks, check-ins), drafts the
