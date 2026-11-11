@@ -81,6 +81,7 @@ def cmd_daily(db: Path, today: date) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
+    load_dotenv()  # first, so .env values such as SYNTHEA_CSV_DIR reach the defaults below
     p = argparse.ArgumentParser(prog="ctagent")
     p.add_argument(
         "command",
@@ -127,7 +128,6 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--gold-dir", type=Path, default=Path("data/gold-demo"))
     p.add_argument("--date", type=date.fromisoformat, default=date.today())
     args = p.parse_args(argv)
-    load_dotenv()
     if args.command == "cohort":
         cmd_cohort(args.synthea)
     elif args.command == "bench":

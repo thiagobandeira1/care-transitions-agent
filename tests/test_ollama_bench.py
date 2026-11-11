@@ -40,6 +40,8 @@ def stub(monkeypatch: pytest.MonkeyPatch) -> None:
     import langchain_ollama
 
     monkeypatch.setattr(langchain_ollama, "ChatOllama", StubChat)
+    # tests that run main() load the developer's .env into os.environ for the whole session
+    monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
 
 
 @pytest.mark.usefixtures("stub")
@@ -50,6 +52,15 @@ def test_ollama_llm_is_local_and_thinking_off() -> None:
     assert m.generate(PlanExplanation, "sys", "prompt").summary == "ok"
     with pytest.raises(PrivacyError):
         OllamaLLM("gpt-oss:120b-cloud")
+
+
+@pytest.mark.usefixtures("stub")
+def test_ollama_base_url_from_env_must_be_local(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:11500")
+    assert OllamaLLM("qwen3:8b")._base_url == "http://127.0.0.1:11500"
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://ollama.example.com:11434")
+    with pytest.raises(PrivacyError):
+        OllamaLLM("qwen3:8b")
 
 
 @pytest.mark.usefixtures("stub")

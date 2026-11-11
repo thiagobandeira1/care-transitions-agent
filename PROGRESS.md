@@ -1,20 +1,21 @@
 # Progress: care-transitions-agent (Stage 4)
 
-_Last updated: 2026-11-09 (paper version 1.3 posted on Zenodo). The gold set was labeled and every model scored
-against it on 2026-11-02 (Finding 3).
-Published on 2026-10-28 at
-https://github.com/thiagobandeira1/care-transitions-agent (code, docs and aggregate metrics only). The M5 to M8 sections report MIMIC aggregates only (counts, rates,
-length quantiles, metrics). Every other number is from synthetic data (Synthea
-and notes generated from it). None of it is MMC data._
+_Last updated: 2026-11-10 (paper version 1.3 was posted on Zenodo on 2026-11-09). Claude's labels were made on
+2026-11-01 and the hand labels on 2026-11-02, when every model was scored against both (Finding 3). Published
+on 2026-10-28 at https://github.com/thiagobandeira1/care-transitions-agent (code, docs and aggregate metrics
+only). MIMIC results here are aggregates only (counts, rates, length quantiles, metrics); every other number
+is from synthetic data (Synthea and notes generated from it). None of it is MMC data._
 
-_Note (2026-11-09): older entries (Findings 1 and 3, M4) call the published preprint "paper 2"; What needs
-you, items 1b and 6, give the paper's history._
+_Note (2026-11-09; last sentence added 2026-11-10): older entries (Findings 1 and 3, M4) call the published
+preprint "paper 2"; What needs you, items 1b and 6, give the paper's history. Synthetic-benchmark intervals in
+Finding 2, M4 and M8 are the earlier ones; `evals/results/` and paper Table 4 resample patients (1,000
+resamples), at most 0.003 different._
 
 ## Where things stand
 | Milestone | Status |
 |---|---|
 | M0 spec, ADRs, hardened skeleton, privacy guards | ✅ done |
-| M1 Synthea cohort, LACE + under-65, TCM rules | ✅ done (743 Medicare index stays) |
+| M1 Synthea cohort, LACE + Medicare under 65, TCM rules | ✅ done (743 Medicare index stays) |
 | M2 LangGraph workflow, human review, SQLite tracking, daily check-ins | ✅ done |
 | M3 real local drafting + GPU vs CPU benchmark | ✅ done (below), re-measured after the prompt fix |
 | M4 public synthetic extraction benchmark | ✅ done: 150 notes (43 train / 107 test), rules vs zero-/few-shot 8b and 14b |
@@ -184,8 +185,8 @@ gold set can say which one is right.
 **Two references** on the 200 gold-set notes (details in `docs/ANNOTATION.md`):
 - **Hand labels** (`gold.json`): 51 notes, labeled by Thiago in the local screen on 2026-11-02, starting from
   the prefill (median 0.3 min per note). They cover **principal and secondary diagnoses only**. Medication
-  changes were hand-checked and then dropped: 24% of the hand "started" rows were drugs named in the admission
-  list (a prefill error, below).
+  changes were hand-checked and then dropped: 24% of the hand "started" rows were flagged as potential false
+  starts by the heuristic screen described below (not proof of an error).
 - **Claude's labels** (`claude.json`): all 200 notes and every field, filled in with Claude's browser extension
   on 2026-11-01 (median 0.5 min per note). A model-made second reference, not hand annotation.
 - On the diagnoses, the prefill agrees with the hand labels at 0.933 relaxed micro F1 and Claude at 0.845.
@@ -224,31 +225,35 @@ Schema failures: one each for c1250, c2500, 8b-local and 8b zero-shot on the 200
 51 hand-labeled notes for c2500 and 8b zero-shot).
 
 **What it shows:**
-- **The fine-tune's diagnosis gain is real.** Against the hand labels the fine-tunes score 0.93-0.94, against
-  0.69-0.72 for the base models zero-shot, with no overlap between their CIs, and 0.81-0.85 few-shot. Principal
-  diagnosis is 0.91-0.98 for every model; the gap is secondary diagnoses. The base models find most of them
-  (recall 0.80-0.88) but list many more (precision 0.48-0.53 zero-shot), while the fine-tunes keep to the
-  Discharge Diagnosis list (precision 0.87-0.91, recall 0.95-0.99). Claude's labels rank them the same way (secondary
-  0.83-0.84 vs 0.70-0.75 zero-shot), which matters because the hand labels were made from the prefill the
-  fine-tunes learned.
+- **The fine-tunes agree best with the section-based diagnosis reference.** Against the hand labels they score
+  0.93-0.94, against 0.69-0.72 for the base models zero-shot, with no overlap between their CIs, and 0.81-0.85
+  few-shot. Principal diagnosis is 0.91-0.98 for every model; the gap is secondary diagnoses. The base models
+  find most of them (recall 0.80-0.88) but list many more (precision 0.48-0.53 zero-shot), while the fine-tunes
+  keep to the Discharge Diagnosis list (precision 0.87-0.91, recall 0.95-0.99). Claude's labels also put the
+  fine-tunes above the base models zero-shot on secondary diagnoses (0.83-0.84 vs 0.70-0.75), but qwen3:8b
+  few-shot scores highest there (0.873). Both references started from the prefill the fine-tunes learned, so
+  this is agreement with a section-based reference, not clinical accuracy (paper Sections 3.2 and 4.3).
 - **Medication changes go the other way.** The rule marks a drug `started` when it is not on a numbered
-  admission list. In 22 of the 51 hand-labeled notes that list has no numbered items or is missing, and across the 200
-  prefills 304 of 1,211 `started` rows (25%) name a drug found in the admission list text, against 18 of 688
-  (3%) in Claude's labels. The fine-tunes learned the rule: medication F1 0.61-0.63 and change-type accuracy
-  0.73-0.75, at the rules' level (0.64 and 0.74), while the base models reach 0.73-0.78 and 0.85-0.89. This
-  rests on Claude's labels alone.
+  admission list. In 22 of the 51 hand-labeled notes that list has no numbered items or is missing, and across
+  the 200 prefills 304 of 1,211 `started` rows (25%) are flagged by a heuristic screen (the first word of four
+  or more letters in the drug's name appears in the note's admission section; paper Section 3.2, Table 7),
+  against 18 of 688 (3%) in Claude's labels. The fine-tunes learned the rule: medication F1 0.61-0.63 and
+  change-type accuracy 0.73-0.75, at the rules' level (0.64 and 0.74), while the base models reach 0.73-0.78
+  and 0.85-0.89. This rests on Claude's labels alone.
 - **The weak fields confirm Findings 1 and 2.** The silver-only fine-tunes never list a follow-up (0.000); the
   teacher-label fine-tunes recover part of it (0.30) but stay below the base models zero-shot (0.40-0.49), and
   red flags show the same order. Pending tests are low for every model (0.10-0.30).
 - **Overall, against Claude's labels, the base models zero-shot lead** (0.70-0.72), and every fine-tune sits
   at the rules' level (0.58-0.60). c2500 (0.588) stays below its teacher (0.675).
 
-**For paper 2:** fine-tuning on rule-based labels transfers the rules. It gains where they are right
-(secondary diagnoses, confirmed by both references), loses where they are wrong (medication change types)
-and copies their gaps (follow-up, red flags). Limits to state: the hand reference is 51 notes, 2 fields, a
-quick pass that started from the prefill, with no agreement measure yet (the second pass opens 2026-11-16);
-medication changes and the weak fields rest on Claude's labels, which are model-made and also started from
-the prefill. The agent keeps the few-shot extractor as its default.
+**For paper 2:** fine-tuning on rule-based labels transfers the rules. It agrees best where they match the
+reference convention (secondary diagnoses under Discharge Diagnosis: best against the hand labels; against
+Claude's labels above zero-shot but below qwen3:8b few-shot), loses where they are likely wrong (medication
+changes) and copies their gaps (follow-up, red flags). Limits to state: the hand reference is 51 notes, 2
+fields, a quick pass that started from the prefill, with no agreement measure yet (the second pass opens
+2026-11-16); medication changes and the weak fields rest on Claude's labels, which are model-made and also
+started from the prefill. A prompted base model stays the default extractor (paper Section 4.2); the MIMIC
+drafting run used qwen3:14b zero-shot, the best overall against Claude's labels (paper Section 2.5, Table 6).
 
 ## Earlier finding (2026-10-26): the model never saw the field instructions
 Each LLM call returns JSON that must match a schema, and the schema's field descriptions held the
@@ -296,9 +301,9 @@ Qwen3 non-thinking sampling with field guidance in the prompt.
 
 ### M4: extraction on the synthetic benchmark (107 test notes)
 Notes were written by qwen3:14b from Synthea records, and a note was kept only if it mentioned every reference
-fact. F1 with relaxed matching (token overlap ≥ 0.5); "micro" pools all fields; 95% CI from a 2,000-sample
-bootstrap. Greedy decoding, extraction schema 1.3 (field guidance in the prompt; repeated list items dropped,
-Finding 2).
+fact. F1 with relaxed matching (token overlap ≥ 0.5); "micro" pools all fields; 95% CI from the earlier
+2,000-sample bootstrap (paper Table 4 now uses 1,000 patient resamples). Greedy decoding, extraction schema 1.3
+(field guidance in the prompt; repeated list items dropped, Finding 2).
 
 | Mode | Principal dx | Secondary dx | Med changes | Follow-up | Pending tests | Red flags | **Micro F1 (95% CI)** | Exact micro F1 | s / note (GPU) |
 |---|---|---|---|---|---|---|---|---|---|
@@ -624,7 +629,8 @@ The pilot of the full agent was dropped on 2026-11-02 (the practice's records do
 is now the simulated-use study (M13). The practice already runs the rule-based steps live on its own follow-up
 board, without discharge summaries; the paper describes that board anonymously, and any counts from it are
 computed at the practice, aggregates only. _Superseded: version 1 names the practice, and from version 1.1 the
-board is one line under the paper's Competing interests._
+board is one line under the paper's Competing interests. The paper does not evaluate use; the simulated-use
+session (M13) is its next planned evaluation (Section 4.7)._
 
 ### M12: the risk tiers against real readmissions (MIMIC-IV, 2026-11-02)
 `mimic-risk` (`src/ctagent/mimic_risk.py`) evaluates the agent's score-and-tier step on every test-split
@@ -634,7 +640,9 @@ admission with a discharge summary. Results: `evals/results/risk_mimic.json`.
 - **Medicare under 65:** `DischargeEvent.medicare` (default true, as in the Synthea cohort) feeds the rule; MIMIC
   sets it from insurance.
 - **Cohort and outcome:** 64,036 stays from 28,220 patients, after excluding 1,692 in-hospital deaths and 671
-  hospice discharges. The outcome is an unplanned admission 1-30 days after discharge: 12,601 stays (19.7%).
+  hospice discharges. The outcome is an unplanned admission (not elective or same-day surgery) that starts after
+  the discharge time and within 30 × 24 hours of it, so a same-day return counts (paper Section 2.3): 12,601
+  stays (19.7%).
 - **Results** (95% CI from 1,000 patient bootstraps):
   - LACE AUROC: 0.638 (0.631-0.646) for readmission; 0.654 (0.647-0.660) for death or readmission.
   - The agent's high tier flags 38.2% of stays. Their readmission rate is 28.3%, against 14.3% for the
@@ -661,11 +669,12 @@ name>"`. M10 was rerun with these changes.
 
 ## What needs you
 1. **MIMIC-IV-Note download:** done and verified (M5 above).
-1b. **Paper** (`paper/draft.md`, solo author, 2026-11-02): one paper on the agent, covering what it does, how
-   well it performs (risk tiers, M12; extraction, Finding 3; drafts, M10) and how it would be used (the
-   simulated-use session, marked [STUDY]; the practice's live board, marked [PRACTICE]). The practice is not
-   named.
-   - **Version 1 for medRxiv** (2026-11-02): `paper/manuscript.md`, in prose.
+1b. **Paper** (solo author; planned 2026-11-02, now `paper/manuscript.md`): one paper on the agent, covering what
+   it does, how well it performs (risk tiers, M12; extraction, Finding 3; drafts, M10) and how it would be used
+   (the simulated-use session, marked [STUDY]; the practice's live board, marked [PRACTICE]). The practice is not
+   named. _Superseded: from version 1 the practice is named, and from version 1.1 the paper covers the risk
+   tiers, extraction and drafts only; use is a next step (Section 4.7)._
+   - **Version 1** (2026-11-02; prepared for medRxiv, not posted there): `paper/manuscript.md`, in prose.
      - The author is General Manager and Head of AI at Mendez Medical Center, which is named, with the
        practice's written approval. The author owns the code, and no practice data were used.
      - No funding. Claude Opus 5.5 is disclosed for the reference labels. The acknowledgments thank Oscar
@@ -674,8 +683,8 @@ name>"`. M10 was rerun with these changes.
      - It covers the public-data work (risk tiers, extraction, drafts) and describes the board in words; the
        session and the board counts are next steps for version 2. _Superseded in version 1.1: the board is one
        line under Competing interests and is not part of the study._
-   - **PDF:** `uv run --with markdown python paper/build_pdf.py` builds `paper/manuscript.pdf` (22 pages, with
-     page numbers). Its tables were checked against `evals/results/`.
+   - **PDF:** `uv run --with markdown python paper/build_pdf.py` builds `paper/manuscript.pdf` (22 pages at
+     version 1, 23 from version 1.2, with page numbers). Its tables were checked against `evals/results/`.
    - **Figure 1:** `uv run --with matplotlib python paper/figure1.py`.
    - **Final version 1** (2026-11-03, tagged `v1-preprint`):
      - The author line gives the full name and the institution only; the competing interests also name TH
@@ -746,8 +755,9 @@ name>"`. M10 was rerun with these changes.
 ```
 uv sync --group dev
 uv run pytest
+# Synthea output first: see the README, Run it (synthetic/synthea/portfolio.properties)
 uv run python -m ctagent cohort
-uv run python -m ctagent bench --model qwen3:14b --n 30          # GPU; add --cpu for CPU-only
+uv run python -m ctagent bench --model qwen3:14b --n 30          # GPU; CPU-only (Table 8): --cpu --n 5
 uv run python -m ctagent make-benchmark --n 150
 uv run python -m ctagent extract-bench --mode few --model qwen3:8b
 uv run python -m ctagent extract-bench --mode few --model qwen3:8b --rescore   # rescore saved predictions

@@ -92,10 +92,11 @@ the zero-shot extractor (`src/ctagent/extractor.py`), and is meant to feed the a
 
 | Benchmark | Base 8b, same export (control) | Base 8b, few-shot | 14b few-shot (teacher) | v0 (silver, 8,851) | **c2500** |
 |---|---|---|---|---|---|
-| Synthetic, 107 notes with known answers | 0.948 (0.935-0.960) | 0.966 (0.956-0.974) | 0.979 (0.970-0.987) | 0.789 (0.766-0.812) | **0.948** (0.934-0.961) |
+| Synthetic, 107 notes with known answers | 0.948 (0.936-0.959) | 0.966 (0.956-0.974) | 0.979 (0.969-0.987) | 0.789 (0.766-0.811) | **0.948** (0.934-0.961) |
 | MIMIC, 200 gold-set notes, against silver | 0.567 (0.532-0.602) | 0.638 (0.602-0.672) | 0.632 (0.597-0.666) | 0.959 (0.942-0.973) | **0.808** (0.782-0.834) |
 
-All scores use extraction schema 1.3, which drops repeated list items (Limitations). Per-field results, the
+All scores use extraction schema 1.3, which drops repeated list items (Limitations). The synthetic row's CIs are
+paper Table 4's (a patient bootstrap, 1,000 resamples). Per-field results, the
 controls and the learning curve are in `PROGRESS.md` (Findings 1 and 2) and `evals/results/`. Scores against
 the hand-annotated gold set are pending annotation.
 
@@ -116,5 +117,5 @@ the hand-annotated gold set are pending annotation.
 ## Intended use
 Research only: the fine-tuned arms of the paper's comparison (few-shot vs fine-tuned, evaluated on gold). It is
 not for clinical use. In the agent, every extraction is a suggestion that a coordinator or provider reviews
-before it reaches a patient or the EHR. The few-shot extractor remains the default until a fine-tuned model
-beats it on gold.
+before it reaches a patient or the EHR. A prompted base model is the default extractor (see Intended use now,
+above).

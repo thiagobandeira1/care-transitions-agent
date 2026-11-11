@@ -1,7 +1,7 @@
 [project]
 name = "care-transitions-agent"
 version = "0.0.1"
-description = "Local, privacy-preserving post-discharge care transitions: a fine-tuned discharge-summary extractor and a human-in-the-loop LangGraph agent (public demo on Synthea)."
+description = "Local, privacy-preserving post-discharge care transitions: a human-in-the-loop LangGraph agent and a discharge-summary extractor (a prompted base model by default; QLoRA fine-tunes evaluated in the paper), with a public demo on Synthea."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }

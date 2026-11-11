@@ -51,3 +51,19 @@ def test_demo_command_queues_drafts_for_review(
     csv = str(fx.write(tmp_path / "csv"))
     main(["demo", "--synthea", csv, "--n", "2", "--workspace", str(tmp_path / "demo")])
     assert "processed 2 discharges; pending review: 2" in capsys.readouterr().out
+
+
+def test_synthea_dir_from_dotenv_reaches_the_command(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """SYNTHEA_CSV_DIR set by .env must reach --synthea; the stub stands in for the real .env."""
+    import ctagent.__main__ as cli
+
+    monkeypatch.delenv("SYNTHEA_CSV_DIR", raising=False)
+    monkeypatch.setattr(
+        cli, "load_dotenv", lambda: monkeypatch.setenv("SYNTHEA_CSV_DIR", str(tmp_path))
+    )
+    seen: list[Path] = []
+    monkeypatch.setattr(cli, "cmd_cohort", seen.append)
+    cli.main(["cohort"])
+    assert seen == [tmp_path]

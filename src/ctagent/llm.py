@@ -1,5 +1,6 @@
 """Narrow LLM calls with schema validation: one retry, then the case is flagged (ADR 0002)."""
 
+import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -99,7 +100,7 @@ class OllamaLLM:
     def __init__(
         self,
         model: str,
-        base_url: str = "http://localhost:11434",
+        base_url: str | None = None,
         *,
         cpu_only: bool = False,
         num_ctx: int = 8192,
@@ -110,6 +111,8 @@ class OllamaLLM:
         num_predict: int = 1500,
     ) -> None:
         assert_no_cloud_tracing()
+        # OLLAMA_BASE_URL (.env) may point at another local port; a remote host is refused below
+        base_url = base_url or os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434"
         assert_local_model(model, base_url)
         from langchain_ollama import ChatOllama
 
