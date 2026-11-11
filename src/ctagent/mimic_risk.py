@@ -9,9 +9,10 @@ at discharge:
 - E: ED-registered admissions 2-182 days before. MIMIC-IV hosp has no ED-only visits, so this
   undercounts.
 The tier is the agent's rule: high when LACE >= 10, or LACE >= 7 for a Medicare beneficiary
-under 65. The outcome is an unplanned admission (not elective, not same-day surgery) 1-30 days
-after discharge; MIMIC only sees its own hospital. Death or readmission within 30 days is the
-secondary outcome (LACE's original one). CIs come from a bootstrap that resamples patients.
+under 65. The outcome is an unplanned admission (not elective, not same-day surgery) that starts
+after the discharge time and within 30 x 24 hours of it, so a same-day return counts; MIMIC only
+sees its own hospital. Death or readmission within 30 days is the secondary outcome (LACE's
+original one). CIs come from a bootstrap that resamples patients.
 """
 
 import json
@@ -55,7 +56,7 @@ def index_stays(hosp_dir: Path, hadm_ids: set[int]) -> tuple[pd.DataFrame, dict[
     excluded = {"died_in_hospital": int(died.sum()), "hospice": int((hospice & ~died).sum())}
     idx = idx[~died & ~hospice].copy()
 
-    # outcome: the next unplanned admission of the same patient, 1-30 days after discharge
+    # outcome: any unplanned admission of the patient starting after discharge, within 30 x 24 h
     later = adm.loc[~adm["admission_type"].isin(PLANNED), ["subject_id", "admittime"]]
     pairs = idx[["hadm_id", "subject_id", "dischtime"]].merge(later, on="subject_id")
     gap = pairs["admittime"] - pairs["dischtime"]

@@ -16,8 +16,8 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Set up Python
@@ -31,7 +31,7 @@ jobs:
       - name: Type-check (mypy)
         run: uv run mypy
       - name: Tests (no models, no MIMIC, no Synthea output; those tests skip)
-        run: uv run pytest
+        run: uv run pytest -m "not ollama and not mimic"
       - name: Guard - no data, weights or secrets tracked; no MIMIC in fixtures
         if: matrix.os == 'ubuntu-latest'
         run: |

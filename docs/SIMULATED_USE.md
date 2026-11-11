@@ -1,7 +1,8 @@
 # Simulated-use study: reviewing the agent's drafts
 
-The paper's "how it is used" question, answered without patient data: a person who does hospital follow-up at a
-primary care practice reviews 30 discharges drafted by the agent, exactly as they would at work. The patients
+The evaluation of the agent in use that the paper plans next (Section 4.7; the paper itself did not evaluate
+use), run without patient data: a person who does hospital follow-up at a primary care practice reviews 30
+discharges drafted by the agent, exactly as they would at work. The patients
 are synthetic (Synthea), so no patient data are involved. No MIMIC access and no practice records are needed.
 
 ## Setup (Thiago, once)

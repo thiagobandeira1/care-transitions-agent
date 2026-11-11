@@ -29,9 +29,11 @@ other fields are scored against `claude.json` only.
   The synthetic benchmark has known answers for them.
 - Medication changes were hand-checked (median 0.3 min per note) and then dropped. The prefill marks a drug
   `started` when it is not on a numbered admission list, but in 22 of the 51 notes that list has no numbered
-  items or is missing. In the hand labels, 84 of 348 `started` rows (24%) were drugs named in the admission
-  list, against 3 of 181 (2%) in Claude's and 90 of 354 in the prefill. The rows stay in the files, unscored.
-  The screen now shows only the diagnoses.
+  items or is missing. In the hand labels, 84 of 348 `started` rows (24%) were flagged by a heuristic screen
+  (the first word of four or more letters in the drug's name appears in the note's admission section; paper
+  Section 3.2; not proof the drug was taken before admission), against 3 of 181 (2%) in Claude's and 90 of 354
+  in the prefill. The rows stay in the files, unscored.
+  The annotation screen now shows only the diagnoses.
 
 ## Workflow
 1. `uv run python -m ctagent gold-export --n 200 --overlap 50` creates one folder per note with `input.txt` and

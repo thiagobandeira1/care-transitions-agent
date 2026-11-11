@@ -18,7 +18,7 @@ labels are expensive. A ~200-note gold set is feasible; tens of thousands of han
 - **Evaluation:** the hand-annotated gold set (test split, 50 notes double-annotated for agreement) is the
   primary reference. Silver-label metrics are secondary, and the synthetic benchmark is public but easier.
 - **Model selection:** hyperparameters and checkpoint are chosen on the validation split only. The test split
-  is touched once.
+  is touched once. (Not followed as written; see the 2026-11-09 update below.)
 - **Weights stay local:** adapters, merged and GGUF models are written outside the repo and never uploaded.
 
 ## Consequences
@@ -96,3 +96,10 @@ in Section 3.2, and what fine-tuning learned in Section 4.2.
   Base-8B-local on the 51-note reference. "Base 8b" in older entries can be either: on the synthetic notes, 0.947
   is `qwen3:8b` and 0.948 is Base-8B-local. [docs/MODEL_CARD.md](../MODEL_CARD.md) maps the fine-tunes' earlier
   names (M7, s2500, c1250, c2500) to the paper's.
+- **Model selection and the test split, as done** (added 2026-11-10): each fine-tune used its final checkpoint,
+  with no early stopping or checkpoint selection (paper Appendix A4). The test split was used more than once:
+  repeated list items were dropped (schema 1.3) after loops were seen on the 200 test notes, all saved
+  predictions were rescored under that rule and against each reference, the agent's extractor was chosen as
+  the best overall on these notes (paper Table 6), and the drafting prompt was revised after a first run on
+  195 of them. The paper therefore reports a development evaluation, not an untouched test (Sections 2.5 and
+  4.6, Appendix C).
